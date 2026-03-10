@@ -1,6 +1,6 @@
 import React, { useRef, useMemo } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Html, OrbitControls } from '@react-three/drei'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 
 interface NodeData {
@@ -91,7 +91,8 @@ function Edge({ from, to }: { from: [number, number, number]; to: [number, numbe
   }, [points])
 
   return (
-    <line geometry={geometry}>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    <line geometry={geometry} {...({} as any)}>
       <lineBasicMaterial color="#1A1A2E" opacity={0.35} transparent linewidth={1} />
     </line>
   )

@@ -12,7 +12,6 @@ interface StickFigureProps {
 // Reusable inline SVG stick figure
 // All animations via CSS keyframes defined in doodle.css
 export default function StickFigure({ size = 80, color = '#1A1A2E', waving = false, jumping = false, walking = false, style }: StickFigureProps) {
-  const scale = size / 80
 
   return (
     <svg

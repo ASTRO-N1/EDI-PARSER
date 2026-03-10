@@ -1,5 +1,3 @@
-import React from 'react'
-
 export default function DashboardPage() {
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#1A1A2E', color: '#FDFAF4' }}>
