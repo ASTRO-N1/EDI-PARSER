@@ -181,9 +181,9 @@ export default function HeroIllustration() {
       }}
     >
       <svg
-        viewBox="0 0 500 520"
+        viewBox="0 0 425 390"
         width="100%"
-        style={{ maxHeight: 520, display: 'block' }}
+        style={{ maxHeight: 480, display: 'block' }}
         aria-label="EDI file parsing illustration"
       >
         {/* ── Drop shadow filter ── */}
@@ -303,10 +303,10 @@ export default function HeroIllustration() {
             X12 · 5010A1
           </text>
 
-          {/* Small decorative stars */}
-          <text x={320} y={390} style={{ fontSize: 18, opacity: 0.4 }}>✦</text>
-          <text x={460} y={420} style={{ fontSize: 12, opacity: 0.3 }}>✦</text>
-          <text x={100} y={400} style={{ fontSize: 10, opacity: 0.25 }}>✦</text>
+          {/* Small decorative stars — repositioned to stay in visible viewBox */}
+          <text x={320} y={370} style={{ fontSize: 18, opacity: 0.4 }}>✦</text>
+          <text x={460} y={350} style={{ fontSize: 12, opacity: 0.3 }}>✦</text>
+          <text x={100} y={380} style={{ fontSize: 10, opacity: 0.25 }}>✦</text>
         </motion.g>
       </svg>
 
@@ -316,7 +316,7 @@ export default function HeroIllustration() {
           fontFamily: 'Nunito, sans-serif',
           fontSize: 12,
           color: 'rgba(26,26,46,0.45)',
-          marginTop: 8,
+          marginTop: 4,
           textAlign: 'center',
         }}
       >

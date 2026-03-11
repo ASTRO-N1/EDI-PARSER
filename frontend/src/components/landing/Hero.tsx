@@ -76,9 +76,9 @@ export default function Hero() {
       {/* Left: Text + Upload */}
       <div
         style={{
-          flex: '0 0 55%',
-          maxWidth: '55%',
-          paddingRight: 'clamp(16px, 3vw, 48px)',
+          flex: '0 0 52%',
+          maxWidth: '52%',
+          paddingRight: 'clamp(16px, 2vw, 32px)',
         }}
       >
         <motion.div
@@ -141,6 +141,48 @@ export default function Hero() {
         </motion.div>
       </div>
 
+      {/* Hand-drawn arrow bridging upload → illustration */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.7 }}
+        animate={inView ? { opacity: 1, scale: 1 } : {}}
+        transition={{ duration: 0.5, delay: 1.2, ease: 'easeOut' }}
+        style={{
+          position: 'absolute',
+          left: '51%',
+          top: '48%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 10,
+          pointerEvents: 'none',
+        }}
+      >
+        <svg width="120" height="90" viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Wobbly curvy arrow — hand-drawn feel */}
+          <path
+            d="M6 70 C16 62, 28 34, 52 22 C72 12, 92 18, 108 14"
+            stroke="#FF6B6B"
+            strokeWidth="3"
+            strokeLinecap="round"
+            fill="none"
+            style={{ filter: 'url(#smudge2)' }}
+          />
+          {/* Arrowhead */}
+          <path
+            d="M96 8 L109 14 L98 22"
+            stroke="#FF6B6B"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+          <defs>
+            <filter id="smudge2" x="-10%" y="-20%" width="120%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
+        </svg>
+      </motion.div>
+
       {/* Right: Hero Illustration */}
       <motion.div
         initial={{ opacity: 0, x: 40 }}
@@ -148,9 +190,9 @@ export default function Hero() {
         transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
         className="flex items-center justify-center"
         style={{
-          flex: '0 0 45%',
-          maxWidth: '45%',
-          height: 'clamp(380px, 45vw, 560px)',
+          flex: '0 0 48%',
+          maxWidth: '48%',
+          height: 'clamp(380px, 45vw, 540px)',
           position: 'relative',
         }}
       >

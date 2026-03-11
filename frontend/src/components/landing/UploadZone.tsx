@@ -64,7 +64,7 @@ export default function UploadZone() {
     <div style={{ width: '100%' }}>
       {/* Sitting stick figure above upload box */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: -12, position: 'relative', zIndex: 2 }}>
-        <SittingStickFigure size={68} />
+        <SittingStickFigure size={75} />
       </div>
 
       {/* Drop zone */}
