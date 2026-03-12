@@ -21,7 +21,7 @@ export default function RoughDivider({ orientation }: RoughDividerProps) {
     const rc = rough.svg(svg)
     const stroke = isDark
       ? 'rgba(240,235,225,0.55)'
-      : 'rgba(26,26,46,0.45)'
+      : 'rgba(26,26,46,0.55)'
 
     if (orientation === 'vertical') {
       const x = w / 2
