@@ -20,7 +20,7 @@ export default function RoughDivider({ orientation }: RoughDividerProps) {
     svg.setAttribute('height', String(h))
     const rc = rough.svg(svg)
     const stroke = isDark
-      ? 'rgba(240,235,225,0.25)'
+      ? 'rgba(48, 48, 46, 0.25)'
       : 'rgba(26,26,46,0.22)'
 
     if (orientation === 'vertical') {
