@@ -79,7 +79,7 @@ export default function ParserMachine({ isError = false }: ParserMachineProps) {
             </clipPath>
             {/* Soft glow filter on hover */}
             <filter id="glow">
-                <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#4ECDC4" floodOpacity={isHovered ? 0.5 : 0} transition="all 0.3s" />
+                <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#4ECDC4" floodOpacity={isHovered ? 0.5 : 0} />
             </filter>
           </defs>
 
@@ -110,7 +110,7 @@ export default function ParserMachine({ isError = false }: ParserMachineProps) {
           </motion.g>
 
           {/* CENTRAL MACHINE GROUP */}
-          <motion.g animate={machineControls} transformOrigin="240px 190px">
+          <motion.g animate={machineControls} style={{ transformOrigin: '240px 190px' }}>
             {/* Machine excited bounce */}
             <motion.g animate={!isError ? { y: [0, -6, 0] } : {}} transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}>
               
@@ -133,7 +133,7 @@ export default function ParserMachine({ isError = false }: ParserMachineProps) {
 
               {/* Arms */}
               {/* Left Arm with feeding document */}
-              <motion.g animate={!isError ? { rotate: [-5, 5, -5] } : {}} transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }} transformOrigin="140px 160px">
+              <motion.g animate={!isError ? { rotate: [-5, 5, -5] } : {}} transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }} style={{ transformOrigin: '140px 160px' }}>
                 <path d="M140 160 L100 180 L75 210" fill="none" stroke="#1A1A2E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 <rect x="55" y="200" width="30" height="38" fill="#FFE66D" stroke="#1A1A2E" strokeWidth="2" rx="2" transform="rotate(-15 70 219)" />
                 <line x1="60" y1="210" x2="80" y2="210" stroke="#1A1A2E" strokeWidth="1" transform="rotate(-15 70 219)" />
@@ -142,7 +142,7 @@ export default function ParserMachine({ isError = false }: ParserMachineProps) {
               </motion.g>
 
               {/* Right Arm with stamp checkmark */}
-              <motion.g transformOrigin="340px 160px">
+              <motion.g style={{ transformOrigin: '340px 160px' }}>
                 <path d="M340 160 L380 180" fill="none" stroke="#1A1A2E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 <motion.g animate={!isError ? { y: [0, -10, 0] } : {}} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}>
                     <path d="M380 180 L405 210" fill="none" stroke="#1A1A2E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />

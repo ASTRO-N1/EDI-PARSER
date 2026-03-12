@@ -5,7 +5,6 @@ interface FileInfoCardProps {
   fileSize: number;
   transactionType: string | null;
   hasError: boolean;
-  errorMessage: string;
 }
 
 export function FileInfoCard({
@@ -13,7 +12,6 @@ export function FileInfoCard({
   fileSize,
   transactionType,
   hasError,
-  errorMessage,
 }: FileInfoCardProps) {
   // Format bytes
   const formatBytes = (bytes: number) => {

@@ -4,7 +4,6 @@ import { RoughBorder } from './RoughBorder';
 interface ParseLogProps {
   isLoading: boolean;
   hasError: boolean;
-  errorMessage: string;
   onRetry: () => void;
   onComplete: () => void;
   transactionType?: string | null;
@@ -13,7 +12,6 @@ interface ParseLogProps {
 export function ParseLog({
   isLoading,
   hasError,
-  errorMessage,
   onRetry,
   onComplete,
   transactionType,
