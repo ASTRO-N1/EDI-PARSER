@@ -52,7 +52,6 @@ export default function TopBar() {
         position: 'relative',
         flexShrink: 0,
         transition: 'background 0.2s ease',
-        borderBottom: isDark ? '1.5px solid rgba(232,228,217,0.06)' : '1.5px solid rgba(26,26,46,0.08)',
       }}
     >
 
