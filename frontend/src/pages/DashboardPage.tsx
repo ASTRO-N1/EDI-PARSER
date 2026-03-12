@@ -1,14 +1,52 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import Sidebar from '../components/dashboard/Sidebar'
+import TopBar from '../components/dashboard/TopBar'
+import OverviewPage from '../components/dashboard/overview/OverviewPage'
+import ComingSoon from '../components/dashboard/ComingSoon'
+import AIChatPanel from '../components/dashboard/AIChatPanel'
+import { useTheme } from '../theme/ThemeContext'
+
 export default function DashboardPage() {
+  const { t } = useTheme()
+
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#1A1A2E', color: '#FDFAF4' }}>
-      <div className="text-center">
-        <p style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: 32, color: '#FFE66D' }}>
-          Dashboard
-        </p>
-        <p style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 400, fontSize: 18, color: '#FDFAF4', opacity: 0.7, marginTop: 8 }}>
-          Coming soon — upload a file first.
-        </p>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'row',
+      height: '100vh',
+      overflow: 'hidden',
+      background: t.bg,
+      transition: 'background 0.2s',
+    }}>
+      {/* 1. Left Sidebar (Fixed 260px) */}
+      <Sidebar />
+
+      {/* 2. Middle Content Area (Flexible) */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        marginLeft: 260,
+        overflow: 'hidden',
+        minWidth: 0, // prevents flex blowout
+      }}>
+        <TopBar />
+
+        <main style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+          <Routes>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="segments" element={<ComingSoon feature="Segment Explorer" />} />
+            <Route path="validation" element={<ComingSoon feature="Validation Report" />} />
+            <Route path="loops" element={<ComingSoon feature="Loop Structure" />} />
+            <Route path="export" element={<ComingSoon feature="Export & Reports" />} />
+            <Route path="ai" element={<ComingSoon feature="AI Insights Center" />} />
+          </Routes>
+        </main>
       </div>
+
+      {/* 3. Right AI Chat Panel (Collapsible 320px / 48px) */}
+      <AIChatPanel />
     </div>
   )
 }

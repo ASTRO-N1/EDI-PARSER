@@ -1,0 +1,234 @@
+import { useEffect, useRef } from 'react'
+import rough from 'roughjs'
+import KPICard from './KPICard'
+import ClaimCard from './ClaimCard'
+import ValidationBadge from './ValidationBadge'
+import SegmentTree from './SegmentTree'
+import LoopSummary from './LoopSummary'
+import useAppStore from '../../../store/useAppStore'
+import { useTheme } from '../../../theme/ThemeContext'
+
+export default function OverviewPage() {
+  const { parseResult } = useAppStore()
+  const { t, isDark } = useTheme()
+  const validPanelRef = useRef<HTMLDivElement>(null)
+  const validRoughRef = useRef<SVGSVGElement>(null)
+
+  // Debug log per user request
+  useEffect(() => {
+    console.log('[OverviewPage] full parseResult:', JSON.stringify(parseResult, null, 2))
+  }, [parseResult])
+
+  const data = parseResult?.data as Record<string, unknown> | undefined
+  const metadata = data?.metadata as Record<string, unknown> | undefined
+  const validation = data?.validation as Record<string, unknown> | undefined
+
+  const errCount = (validation?.error_count as number) ?? 0
+  const warnCount = (validation?.warning_count as number) ?? 0
+  const totalSegments = (metadata?.total_segments as number) ?? '--'
+  const claimsCount = (metadata?.transaction_set_count as number) ?? '--'
+  const fileSizeRaw = (data?.file_info as Record<string, unknown> | undefined)?.file_size_bytes as number | undefined
+  const fileSize = fileSizeRaw ? (fileSizeRaw / 1024).toFixed(1) + ' KB' : '--'
+
+  const hasData = parseResult !== null
+  const isValid = errCount === 0 && warnCount === 0
+
+  useEffect(() => {
+    if (!validRoughRef.current || !validPanelRef.current) return
+    const svg = validRoughRef.current
+    svg.innerHTML = ''
+    const rc = rough.svg(svg)
+    const w = validPanelRef.current.offsetWidth
+    const h = validPanelRef.current.offsetHeight
+    svg.setAttribute('width', String(w))
+    svg.setAttribute('height', String(h))
+    svg.appendChild(rc.rectangle(2, 2, w - 4, h - 4, {
+      roughness: isDark ? 1.2 : 1.8,
+      strokeWidth: isDark ? 1.5 : 2,
+      stroke: isDark ? 'rgba(240,235,225,0.35)' : t.roughStroke,
+      fill: 'none',
+    }))
+  })
+
+  const doodleOpacity = isDark ? 0.08 : 0.15
+
+  return (
+    <div style={{ padding: '20px 24px', maxWidth: 1400, margin: '0 auto', position: 'relative', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+      {/* Background doodles */}
+      <svg width={100} height={100} style={{ position: 'absolute', top: 40, right: 80, opacity: doodleOpacity, pointerEvents: 'none' }}>
+        <path d="M50 10 L 60 40 L 90 50 L 60 60 L 50 90 L 40 60 L 10 50 L 40 40 Z" fill="none" stroke={t.yellow} strokeWidth="2" strokeLinejoin="round" />
+      </svg>
+      <svg width={80} height={80} style={{ position: 'absolute', top: 300, left: 20, opacity: doodleOpacity, pointerEvents: 'none' }}>
+        <circle cx="40" cy="40" r="20" fill="none" stroke={t.teal} strokeWidth="2" strokeDasharray="4 4" />
+      </svg>
+      <svg width={60} height={60} style={{ position: 'absolute', bottom: 100, right: 40, opacity: doodleOpacity, pointerEvents: 'none' }}>
+        <path d="M10 30 Q 30 10 50 30 T 90 30" fill="none" stroke={t.purple} strokeWidth="3" strokeLinecap="round" />
+      </svg>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(0, 1fr))',
+        gap: 16,
+        marginBottom: 16,
+      }}>
+        <KPICard
+          label="Total Segments"
+          value={totalSegments}
+          icon="🧩"
+          color={t.teal}
+          subtext="across all loops"
+          decoration="star"
+          delay={0}
+        />
+        <KPICard
+          label="Transaction Sets"
+          value={claimsCount}
+          icon="📋"
+          color={t.purple}
+          subtext="in this interchange"
+          decoration="circle"
+          delay={80}
+        />
+        <KPICard
+          label="EDI Status"
+          value={hasData ? (isValid ? 'Valid' : 'Invalid') : '--'}
+          icon={hasData ? (isValid ? '✅' : '❌') : '➖'}
+          color={hasData ? (isValid ? t.mint : t.coral) : t.inkMuted}
+          subtext={hasData ? `${errCount} errors, ${warnCount} warnings` : 'no file loaded'}
+          decoration="zigzag"
+          delay={160}
+        />
+        <KPICard
+          label="File Size"
+          value={fileSize}
+          icon="📁"
+          color={t.yellow}
+          subtext="--"
+          decoration="diamond"
+          delay={240}
+        />
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(400px, 1fr) minmax(400px, 1.2fr)',
+        gap: 16,
+        marginBottom: 16,
+        animation: 'fadeSlideUp 500ms ease-out 320ms both',
+      }}>
+        <ClaimCard />
+
+        <div
+          ref={validPanelRef}
+          style={{
+            background: t.bgCard,
+            borderRadius: 14,
+            padding: '20px 24px',
+            boxShadow: `4px 4px 0px ${t.shadow}`,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'background 0.2s',
+          }}
+        >
+          <svg ref={validRoughRef} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', width: '100%', height: '100%' }} />
+
+          <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 18 }}>🛡️</span>
+            <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 16, color: t.ink }}>
+              Validation Report
+            </div>
+            <div style={{ marginLeft: 'auto' }}>
+              <ValidationBadge />
+            </div>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', paddingRight: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {!hasData ? (
+              <div style={{ margin: 'auto', textAlign: 'center', color: t.inkFaint, fontFamily: 'Nunito, sans-serif' }}>
+                <span style={{ fontSize: 24, display: 'block', marginBottom: 8 }}>📭</span>
+                No file parsed yet
+              </div>
+            ) : isValid ? (
+              <div style={{ margin: 'auto', textAlign: 'center' }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%',
+                  background: isDark ? 'rgba(149,225,211,0.1)' : 'rgba(149,225,211,0.2)',
+                  border: `3px solid ${t.teal}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 16px', fontSize: 32,
+                }}>
+                  ✨
+                </div>
+                <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 18, color: t.ink }}>
+                  All checks passed
+                </div>
+                <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 14, color: t.inkMuted, marginTop: 4 }}>
+                  SNIP Levels 1-2 verified successfully.
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
+                  {['Syntax', 'Balance', 'Segments'].map(tStr => (
+                    <span key={tStr} style={{
+                      background: isDark ? 'rgba(149,225,211,0.15)' : t.mint,
+                      color: t.ink,
+                      padding: '4px 12px',
+                      borderRadius: 12,
+                      fontFamily: 'Nunito, sans-serif',
+                      fontWeight: 700,
+                      fontSize: 12,
+                    }}>
+                      {tStr} OK
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              // Show errors and warnings
+              <>
+                {(validation?.errors as string[])?.map((err, i) => (
+                  <div key={`err-${i}`} style={{
+                    background: isDark ? 'rgba(255,107,107,0.12)' : '#FFF0F0',
+                    borderLeft: `4px solid ${t.coral}`,
+                    padding: '12px 16px',
+                    borderRadius: '4px 8px 8px 4px',
+                    fontFamily: 'Nunito, sans-serif',
+                    fontSize: 13,
+                    color: t.ink,
+                    lineHeight: 1.4,
+                  }}>
+                    <strong style={{ color: t.coral }}>Error:</strong> {err}
+                  </div>
+                ))}
+                {(validation?.warnings as string[])?.map((warn, i) => (
+                  <div key={`warn-${i}`} style={{
+                    background: isDark ? 'rgba(255,230,109,0.08)' : '#FFFBF0',
+                    borderLeft: `4px solid ${t.yellow}`,
+                    padding: '12px 16px',
+                    borderRadius: '4px 8px 8px 4px',
+                    fontFamily: 'Nunito, sans-serif',
+                    fontSize: 13,
+                    color: t.ink,
+                    lineHeight: 1.4,
+                  }}>
+                    <strong style={{ color: t.yellow }}>Warning:</strong> {warn}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(400px, 1.6fr) minmax(300px, 1fr)',
+        gap: 16,
+        marginBottom: 32,
+        animation: 'fadeSlideUp 600ms ease-out 400ms both',
+      }}>
+        <SegmentTree />
+        <LoopSummary />
+      </div>
+    </div>
+  )
+}

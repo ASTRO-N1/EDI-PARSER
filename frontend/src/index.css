@@ -50,3 +50,117 @@ body::before {
 code, pre, .mono {
   font-family: 'JetBrains Mono', monospace;
 }
+
+/* ═══════════════════════════════
+   DASHBOARD ANIMATIONS & STYLES
+   ═══════════════════════════════ */
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+
+@keyframes typing-blink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+/* KPI Card hover */
+.kpi-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 6px 6px 0px #1A1A2E !important;
+}
+
+/* Nav hover */
+.nav-inactive:hover {
+  background: rgba(78, 205, 196, 0.12) !important;
+  color: #1A1A2E !important;
+}
+
+/* Pulse dot */
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Segment row hover */
+.segment-row:hover {
+  background: rgba(78, 205, 196, 0.08);
+}
+
+/* Custom scrollbar — all scrollable areas */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(78, 205, 196, 0.35);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(78, 205, 196, 0.6);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(78,205,196,0.35) transparent;
+}
+
+/* Chat chip hover */
+.chat-chip:hover {
+  border-color: #4ECDC4 !important;
+  color: #1A1A2E !important;
+}
+
+/* Chat input focus */
+.chat-input:focus {
+  border-color: #4ECDC4 !important;
+  box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.15) !important;
+}
+
+/* Send button hover */
+.send-btn:hover {
+  background: #4ECDC4 !important;
+  color: #1A1A2E !important;
+}
+
+/* Coming soon button hover */
+.coming-soon-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 5px 5px 0px #4ECDC4 !important;
+}
+
+/* Upload new file hover */
+.upload-new-link:hover {
+  opacity: 0.75;
+}
+
+/* Typing dots */
+.typing-dots span {
+  display: inline-block;
+  animation: typing-blink 1.2s ease infinite;
+  font-size: 18px;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
