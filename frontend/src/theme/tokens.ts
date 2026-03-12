@@ -1,11 +1,11 @@
 export const lightTokens = {
-  bg:          '#F5EFE0',
+  bg:          '#FDFAF4',   // was #F5EFE0
   bgCard:      '#FFFFFF',
-  bgSidebar:   '#EDE6D3',
+  bgSidebar:   '#F5F1E8',   // was #EDE6D3
   bgInput:     '#FFFFFF',
   bgChip:      '#FFFFFF',
   bgHighlight: '#F0F0F8',
-  bgChatArea:  '#F0E9D8',
+  bgChatArea:  '#F5F1E8',   // was #F0E9D8
   ink:         '#1A1A2E',
   inkMuted:    'rgba(26,26,46,0.55)',
   inkFaint:    'rgba(26,26,46,0.35)',
