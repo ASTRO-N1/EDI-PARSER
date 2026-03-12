@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { useRef, useEffect } from 'react'
 import { useGLTF } from '@react-three/drei'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import type { GLTF } from 'three-stdlib'
 
 type GLTFResult = GLTF & {
@@ -47,10 +47,9 @@ export function RobotModel({
   scale = 1.4,
 }: RobotModelProps) {
   const group = useRef<THREE.Group>(null!)
-  const { nodes, materials } = useGLTF('/models/edimascot.glb') as GLTFResult
+  const { nodes, materials } = useGLTF('/models/edimascot.glb') as unknown as GLTFResult
 
-  // suppress unused warning — useThree needed to keep R3F context alive
-  const _ = useThree()
+
 
   // ─── Material patch ───────────────────────────────────────────────
   useEffect(() => {

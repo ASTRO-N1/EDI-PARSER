@@ -12,14 +12,12 @@ export default function ProcessingPage() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
 
   const parseFile = async () => {
     if (!file) return;
     
     setIsLoading(true);
     setHasError(false);
-    setErrorMessage('');
     
     
     try {
@@ -51,7 +49,7 @@ export default function ProcessingPage() {
 
     } catch (err: any) {
       setHasError(true);
-      setErrorMessage(err.message || String(err));
+      console.error(err.message || String(err));
       setIsLoading(false);
     }
   };
@@ -153,12 +151,10 @@ export default function ProcessingPage() {
             fileSize={file?.size || 0}
             transactionType={transactionType}
             hasError={hasError}
-            errorMessage={errorMessage}
           />
           <ParseLog 
             isLoading={isLoading}
             hasError={hasError}
-            errorMessage={errorMessage}
             onRetry={parseFile}
             onComplete={() => navigate('/dashboard')}
             transactionType={transactionType}
