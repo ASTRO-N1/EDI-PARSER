@@ -80,7 +80,7 @@ function SegmentGroup({ id, segments }: SegmentGroupProps) {
           ▶
         </span>
         <span style={{
-          background: t.ink,
+          background: isDark ? '#1A1A2E' : t.ink,
           color: t.yellow,
           fontFamily: '"JetBrains Mono", monospace',
           fontWeight: 600,
