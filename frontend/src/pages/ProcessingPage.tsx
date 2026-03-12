@@ -21,8 +21,7 @@ export default function ProcessingPage() {
     setHasError(false);
     setErrorMessage('');
     
-    const startTime = Date.now();
-
+    
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -46,11 +45,6 @@ export default function ProcessingPage() {
                    result.file_info?.transaction_type || 
                    "EDI File";
       setTransactionType(type);
-
-      const elapsed = Date.now() - startTime;
-      if (elapsed < 2000) {
-        await new Promise(resolve => setTimeout(resolve, 2000 - elapsed));
-      }
 
       // Finish loading
       setIsLoading(false);
@@ -99,7 +93,7 @@ export default function ProcessingPage() {
         position: 'relative'
       }}>
         {/* Rough Border around inner content */}
-        <RoughBorder roughness={2.5} strokeWidth={2.5} stroke="#1A1A2E" borderRadius={0} />
+        <RoughBorder roughness={1.0} strokeWidth={2.0} stroke="#4A4A6A" borderRadius={12} />
 
         {/* Small Doodle Decorations */}
         <svg style={{ position: 'absolute', top: 20, right: 20, width: 20, height: 20, transform: 'rotate(15deg)', pointerEvents: 'none', zIndex: 0 }} viewBox="0 0 24 24" fill="none">
@@ -166,6 +160,7 @@ export default function ProcessingPage() {
             hasError={hasError}
             errorMessage={errorMessage}
             onRetry={parseFile}
+            onComplete={() => navigate('/dashboard')}
             transactionType={transactionType}
           />
         </div>

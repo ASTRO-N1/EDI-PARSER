@@ -6,6 +6,7 @@ interface ParseLogProps {
   hasError: boolean;
   errorMessage: string;
   onRetry: () => void;
+  onComplete: () => void;
   transactionType?: string | null;
 }
 
@@ -14,6 +15,7 @@ export function ParseLog({
   hasError,
   errorMessage,
   onRetry,
+  onComplete,
   transactionType,
 }: ParseLogProps) {
   const [logIndex, setLogIndex] = useState(-1);
@@ -70,7 +72,7 @@ export function ParseLog({
           position: 'relative',
         }}
       >
-        <RoughBorder roughness={1.5} strokeWidth={2} stroke="#FF6B6B" borderRadius={12} />
+        <RoughBorder roughness={0.8} strokeWidth={1.5} stroke="#FF6B6B" borderRadius={12} />
         
         <div style={{ fontFamily: 'Nunito', fontWeight: 700, fontSize: '16px', color: '#FF6B6B' }}>
           😔  Couldn't connect to parser
@@ -133,7 +135,7 @@ export function ParseLog({
           position: 'relative',
         }}
       >
-        <RoughBorder roughness={1.5} strokeWidth={2} stroke="#1A1A2E" borderRadius={14} />
+        <RoughBorder roughness={0.8} strokeWidth={1.5} stroke="#4A4A6A" borderRadius={14} />
         
         <div style={{
           height: '36px',
@@ -229,6 +231,42 @@ export function ParseLog({
         }}>
           {Math.round(percent)}%
         </div>
+
+        {percent >= 100 && (
+          <button
+            onClick={onComplete}
+            style={{
+              width: '100%',
+              marginTop: '16px',
+              background: '#FFE66D',
+              color: '#1A1A2E',
+              border: '2px solid #1A1A2E',
+              borderRadius: '12px',
+              padding: '16px',
+              fontFamily: 'Nunito',
+              fontWeight: 800,
+              fontSize: '18px',
+              cursor: 'pointer',
+              boxShadow: '4px 4px 0px #1A1A2E',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              transition: 'all 0.2s ease',
+              animation: 'slideUpBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.boxShadow = '6px 6px 0px #1A1A2E'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = '4px 4px 0px #1A1A2E'
+            }}
+          >
+            Let's Go! 🚀
+          </button>
+        )}
       </div>
 
       <style>{`
@@ -236,6 +274,16 @@ export function ParseLog({
           to {
             opacity: 1;
             transform: translateX(0);
+          }
+        }
+        @keyframes slideUpBounce {
+          0% {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
           }
         }
       `}</style>
