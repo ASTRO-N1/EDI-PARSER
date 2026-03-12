@@ -16,6 +16,7 @@ export default function DashboardPage() {
       flexDirection: 'row',
       height: '100vh',
       overflow: 'hidden',
+      alignItems: 'stretch',
       background: t.bg,
       transition: 'background 0.2s',
     }}>
