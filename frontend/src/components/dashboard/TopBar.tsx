@@ -15,7 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
 export default function TopBar() {
   const location = useLocation()
   const { parseResult, transactionType } = useAppStore()
-  const { t, isDark } = useTheme()
+  const { t } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
 
   const title = PAGE_TITLES[location.pathname] ?? 'Overview'
