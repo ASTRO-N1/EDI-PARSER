@@ -121,7 +121,13 @@ code, pre, .mono {
 }
 
 /* Firefox */
-* {
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(78,205,196,0.35) transparent;
+}
+
+/* Ensure dashboard main area scrollbar is styled */
+.dashboard-main {
   scrollbar-width: thin;
   scrollbar-color: rgba(78,205,196,0.35) transparent;
 }
