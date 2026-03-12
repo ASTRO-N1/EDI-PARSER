@@ -78,7 +78,7 @@ function ActiveHighlight({ width, height, stroke }: { width: number; height: num
     }))
   }, [width, height, stroke])
   if (!width || !height) return null
-  return <svg ref={svgRef} width={width} height={height} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 2 }} />
+  return <svg ref={svgRef} width={width} height={height} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 2, overflow: 'hidden' }} />
 }
 
 export default function Sidebar() {
@@ -89,8 +89,6 @@ export default function Sidebar() {
   const underlineRef = useRef<SVGSVGElement>(null)
   const hackCardRef = useRef<SVGSVGElement>(null)
   const hackContainerRef = useRef<HTMLDivElement>(null)
-  const toggleTrackRef = useRef<SVGSVGElement>(null)
-
   // Removed rightBorderRef use per UI fix 1
 
   useEffect(() => {
@@ -100,16 +98,6 @@ export default function Sidebar() {
     const rc = rough.svg(svg)
     svg.appendChild(rc.line(0, 3, 100, 3, { roughness: 2.5, strokeWidth: 2, stroke: t.teal }))
   }, [t.teal])
-
-  useEffect(() => {
-    if (!toggleTrackRef.current) return
-    const svg = toggleTrackRef.current
-    svg.innerHTML = ''
-    const rc = rough.svg(svg)
-    svg.appendChild(rc.rectangle(0, 0, 44, 24, {
-      roughness: 2, strokeWidth: 1.5, stroke: t.roughStroke, fill: 'none',
-    }))
-  }, [t.roughStroke])
 
   useEffect(() => {
     if (!hackCardRef.current || !hackContainerRef.current) return
@@ -257,6 +245,7 @@ export default function Sidebar() {
                 boxShadow: isActive ? `3px 3px 0px rgba(0,0,0,0.15)` : 'none',
                 transition: 'all 0.15s',
                 position: 'relative',
+                overflow: 'hidden',
               }}
               className={isActive ? 'nav-active' : 'nav-inactive'}
             >

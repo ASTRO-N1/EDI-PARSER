@@ -26,48 +26,50 @@ export default function AIChatPanel() {
     return (
       <div style={{
         width: 40,
-        height: '100%',
+        height: '100vh',
         background: t.bgSidebar,
-        borderLeft: `1.5px solid ${isDark ? 'rgba(240,235,225,0.10)' : 'rgba(26,26,46,0.10)'}`,
+        borderLeft: isDark ? '2px solid rgba(240,235,225,0.12)' : '2px solid rgba(26,26,46,0.12)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        paddingTop: 14,
+        paddingTop: 12,
         gap: 0,
         overflow: 'hidden',
-        position: 'relative',
         flexShrink: 0,
         transition: 'background 0.2s',
       }}>
-        <button 
+        <button
           onClick={() => setIsOpen(true)}
+          title="Open AI Chat"
           style={{
-            width: 28, height: 28,
+            width: 28,
+            height: 28,
             borderRadius: 6,
             background: 'transparent',
             border: `1.5px solid ${t.border}`,
             color: t.teal,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             cursor: 'pointer',
             flexShrink: 0,
             transition: 'all 0.15s',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = t.teal; 
-            e.currentTarget.style.color = t.ink;
-            e.currentTarget.style.borderColor = t.teal;
+            e.currentTarget.style.background = t.teal
+            e.currentTarget.style.color = t.ink
+            e.currentTarget.style.borderColor = t.teal
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'; 
-            e.currentTarget.style.color = t.teal;
-            e.currentTarget.style.borderColor = t.border;
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = t.teal
+            e.currentTarget.style.borderColor = t.border
           }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <polyline points="9,18 15,12 9,6"/>
           </svg>
         </button>
-
         <div style={{
           writingMode: 'vertical-rl',
           textOrientation: 'mixed',
@@ -78,7 +80,7 @@ export default function AIChatPanel() {
           color: t.inkFaint,
           letterSpacing: '0.12em',
           userSelect: 'none',
-          marginTop: 20,
+          marginTop: 16,
         }}>
           AI CHAT
         </div>
@@ -91,7 +93,7 @@ export default function AIChatPanel() {
       width: 320,
       height: '100%',
       background: t.bgSidebar,
-      borderLeft: `1.5px solid ${isDark ? 'rgba(240,235,225,0.10)' : 'rgba(26,26,46,0.10)'}`,
+      borderLeft: isDark ? '2px solid rgba(240,235,225,0.12)' : '2px solid rgba(26,26,46,0.12)',
       position: 'relative',
       display: 'flex',
       flexDirection: 'column',
