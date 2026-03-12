@@ -14,17 +14,26 @@ export default function LoopSummary() {
 
   useEffect(() => {
     if (!roughRef.current || !containerRef.current) return
-    const svg = roughRef.current
-    svg.innerHTML = ''
-    const rc = rough.svg(svg)
-    const w = containerRef.current.offsetWidth
-    const h = containerRef.current.offsetHeight
-    svg.setAttribute('width', String(w))
-    svg.setAttribute('height', String(h))
-    svg.appendChild(rc.rectangle(2, 2, w - 4, h - 4, {
-      roughness: 1.5, strokeWidth: 2, stroke: t.roughStroke, fill: 'none',
-    }))
-  })
+    const container = containerRef.current
+    const draw = () => {
+      if (!roughRef.current) return
+      const svg = roughRef.current
+      svg.innerHTML = ''
+      const rc = rough.svg(svg)
+      const w = container.offsetWidth
+      const h = container.offsetHeight
+      if (!w || !h) return
+      svg.setAttribute('width', String(w))
+      svg.setAttribute('height', String(h))
+      svg.appendChild(rc.rectangle(2, 2, w - 4, h - 4, {
+        roughness: 1.5, strokeWidth: 2, stroke: t.roughStroke, fill: 'none',
+      }))
+    }
+    draw()
+    const ro = new ResizeObserver(draw)
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [t.roughStroke])
 
   // Simple visual logic if loops exist or not
   const hasLoops = loops && loops.length > 0

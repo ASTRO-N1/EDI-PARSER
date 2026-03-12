@@ -35,20 +35,29 @@ export default function OverviewPage() {
 
   useEffect(() => {
     if (!validRoughRef.current || !validPanelRef.current) return
-    const svg = validRoughRef.current
-    svg.innerHTML = ''
-    const rc = rough.svg(svg)
-    const w = validPanelRef.current.offsetWidth
-    const h = validPanelRef.current.offsetHeight
-    svg.setAttribute('width', String(w))
-    svg.setAttribute('height', String(h))
-    svg.appendChild(rc.rectangle(2, 2, w - 4, h - 4, {
-      roughness: isDark ? 1.2 : 1.8,
-      strokeWidth: isDark ? 1.5 : 2,
-      stroke: isDark ? 'rgba(240,235,225,0.35)' : t.roughStroke,
-      fill: 'none',
-    }))
-  })
+    const container = validPanelRef.current
+    const draw = () => {
+      if (!validRoughRef.current) return
+      const svg = validRoughRef.current
+      svg.innerHTML = ''
+      const rc = rough.svg(svg)
+      const w = container.offsetWidth
+      const h = container.offsetHeight
+      if (!w || !h) return
+      svg.setAttribute('width', String(w))
+      svg.setAttribute('height', String(h))
+      svg.appendChild(rc.rectangle(2, 2, w - 4, h - 4, {
+        roughness: isDark ? 1.2 : 1.8,
+        strokeWidth: isDark ? 1.5 : 2,
+        stroke: isDark ? 'rgba(240,235,225,0.35)' : t.roughStroke,
+        fill: 'none',
+      }))
+    }
+    draw()
+    const ro = new ResizeObserver(draw)
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [isDark, t.roughStroke])
 
   const doodleOpacity = isDark ? 0.08 : 0.15
 

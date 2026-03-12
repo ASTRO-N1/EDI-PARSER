@@ -89,20 +89,29 @@ export default function ClaimCard() {
 
   useEffect(() => {
     if (!roughRef.current || !containerRef.current) return
-    const svg = roughRef.current
-    svg.innerHTML = ''
-    const rc = rough.svg(svg)
-    const w = containerRef.current.offsetWidth
-    const h = containerRef.current.offsetHeight
-    svg.setAttribute('width', String(w))
-    svg.setAttribute('height', String(h))
-    svg.appendChild(rc.rectangle(2, 2, w - 4, h - 4, {
-      roughness: isDark ? 1.2 : 1.8, 
-      strokeWidth: isDark ? 1.5 : 2, 
-      stroke: isDark ? 'rgba(240,235,225,0.35)' : t.roughStroke, 
-      fill: 'none',
-    }))
-  })
+    const container = containerRef.current
+    const draw = () => {
+      if (!roughRef.current) return
+      const svg = roughRef.current
+      svg.innerHTML = ''
+      const rc = rough.svg(svg)
+      const w = container.offsetWidth
+      const h = container.offsetHeight
+      if (!w || !h) return
+      svg.setAttribute('width', String(w))
+      svg.setAttribute('height', String(h))
+      svg.appendChild(rc.rectangle(2, 2, w - 4, h - 4, {
+        roughness: isDark ? 1.2 : 1.8,
+        strokeWidth: isDark ? 1.5 : 2,
+        stroke: isDark ? 'rgba(240,235,225,0.35)' : t.roughStroke,
+        fill: 'none',
+      }))
+    }
+    draw()
+    const ro = new ResizeObserver(draw)
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [isDark, t.roughStroke])
 
   useEffect(() => {
     if (!underlineRef.current) return
