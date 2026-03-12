@@ -129,7 +129,6 @@ export default function Sidebar() {
       display: 'flex',
       flexDirection: 'column',
       zIndex: 10,
-      borderRight: isDark ? '2px solid rgba(240,235,225,0.12)' : '2px solid rgba(26,26,46,0.12)',
     }}>
 
       {/* Logo */}

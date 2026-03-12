@@ -4,6 +4,7 @@ import TopBar from '../components/dashboard/TopBar'
 import OverviewPage from '../components/dashboard/overview/OverviewPage'
 import ComingSoon from '../components/dashboard/ComingSoon'
 import AIChatPanel from '../components/dashboard/AIChatPanel'
+import RoughDivider from '../components/dashboard/RoughDivider'
 import { useTheme } from '../theme/ThemeContext'
 
 export default function DashboardPage() {
@@ -21,15 +22,21 @@ export default function DashboardPage() {
       {/* 1. Left Sidebar (Fixed 260px) */}
       <Sidebar />
 
+      {/* Rough vertical divider: Sidebar | Middle */}
+      <RoughDivider orientation="vertical" />
+
       {/* 2. Middle Content Area (Flexible) */}
       <div style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        minWidth: 0, // prevents flex blowout
+        minWidth: 0,
       }}>
         <TopBar />
+
+        {/* Rough horizontal divider: TopBar | Main content */}
+        <RoughDivider orientation="horizontal" />
 
         <main style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
           <Routes>
@@ -44,7 +51,10 @@ export default function DashboardPage() {
         </main>
       </div>
 
-      {/* 3. Right AI Chat Panel (Collapsible 320px / 48px) */}
+      {/* Rough vertical divider: Middle | AI Panel */}
+      <RoughDivider orientation="vertical" />
+
+      {/* 3. Right AI Chat Panel (Collapsible 320px / 40px) */}
       <AIChatPanel />
     </div>
   )
