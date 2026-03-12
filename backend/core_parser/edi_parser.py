@@ -410,13 +410,17 @@ class EDIParser:
         """
         txn = self.metadata.get("transaction_type", "")
 
+        # ── FIX 1: Open HEADER at ISA so envelope segments are recorded ──────
+        if seg_id == "ISA":
+            self._open_loop("HEADER", line)
+
         # ── Record segment in current open loop ─────────────────────────────
         if self._open_loops:
             self._open_loops[-1]["seen"].add(seg_id)
 
         # ── Envelope boundaries ─────────────────────────────────────────────
         if seg_id == "ST":
-            self._open_loop("HEADER", line)
+            self._ensure_loop("HEADER", line)
             return
 
         if seg_id in ("SE", "GE", "IEA"):
@@ -428,7 +432,7 @@ class EDIParser:
         if txn == "837":
             self._update_837_loops(seg_id, elements, line)
 
-        # ── 835 loop transitions ─────────────────────────────────────────────
+        # ── 835 loop transitions ──────────────────────���──────────────────────
         elif txn == "835":
             self._update_835_loops(seg_id, elements, line)
 
@@ -479,6 +483,9 @@ class EDIParser:
                         self._push_loop("2310B", line)
                 elif loop_id and should_push:
                     self._push_loop(loop_id, line)
+                # FIX 2: Record NM1 as seen in the newly pushed loop
+                if self._open_loops:
+                    self._open_loops[-1]["seen"].add("NM1")
 
         elif seg_id == "HL":
             level = elements[3].strip() if len(elements) > 3 else ""
@@ -492,6 +499,9 @@ class EDIParser:
                 # Close any open 2000x loops first
                 self._close_loops_at_or_above("2000A", line)
                 self._push_loop(level_map[level], line)
+                # FIX 2: Record HL as seen in its own loop
+                if self._open_loops:
+                    self._open_loops[-1]["seen"].add("HL")
 
         elif seg_id == "SBR":
             self._ensure_loop("2000B", line)
@@ -502,10 +512,16 @@ class EDIParser:
         elif seg_id == "CLM":
             self._close_loops_below("2000B", line)
             self._push_loop("2300", line)
+            # FIX 2: Record CLM as seen in its own loop
+            if self._open_loops:
+                self._open_loops[-1]["seen"].add("CLM")
 
         elif seg_id == "LX":
             self._close_loops_at_or_above("2400", line)
             self._push_loop("2400", line)
+            # FIX 2: Record LX as seen in its own loop
+            if self._open_loops:
+                self._open_loops[-1]["seen"].add("LX")
 
         elif seg_id == "SV1":
             self._ensure_loop("2400", line)
