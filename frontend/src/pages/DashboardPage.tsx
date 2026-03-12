@@ -26,7 +26,6 @@ export default function DashboardPage() {
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        marginLeft: 260,
         overflow: 'hidden',
         minWidth: 0, // prevents flex blowout
       }}>
