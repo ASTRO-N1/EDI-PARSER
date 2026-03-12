@@ -24,7 +24,7 @@ export default function ProcessingPage() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://edi-parser-production.up.railway.app';
       const res = await fetch(`${apiUrl}/api/v1/parse`, {
         method: 'POST',
         body: formData,
