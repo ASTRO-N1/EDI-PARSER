@@ -22,17 +22,20 @@ const BADGES = [
 export default function UploadZone() {
   const navigate = useNavigate()
   const setEdiFile = useAppStore((s) => s.setEdiFile)
+  const setFile = useAppStore((s) => s.setFile)
   const [loading, setLoading] = useState(false)
 
   const handleFile = useCallback(
     (file: File) => {
       setLoading(true)
       setEdiFile(file)
+      setFile(file)
       setTimeout(() => {
-        navigate('/processing', { state: { file } })
+        // Just navigate. Processing page will read `file` from Zustand.
+        navigate('/processing')
       }, 300)
     },
-    [setEdiFile, navigate]
+    [setEdiFile, setFile, navigate]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

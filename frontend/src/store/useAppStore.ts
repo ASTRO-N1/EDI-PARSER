@@ -13,9 +13,16 @@ interface AppState {
   setEdiFile: (file: File) => void
   clearFile: () => void
 
+  // New Processing Page File State
+  file: File | null
+  setFile: (file: File) => void
+
   // Parse result
   parseResult: Record<string, unknown> | null
-  setParseResult: (result: Record<string, unknown>) => void
+  setParseResult: (result: Record<string, unknown> | null) => void
+
+  transactionType: string | null
+  setTransactionType: (type: string | null) => void
 
   // Loading state
   isLoading: boolean
@@ -50,11 +57,20 @@ const useAppStore = create<AppState>((set) => ({
   clearFile: () =>
     set({
       ediFile: { file: null, fileName: '', fileType: '', parseResult: null },
+      file: null,
+      parseResult: null,
     }),
+
+  // New Processing Page File State
+  file: null,
+  setFile: (file) => set({ file }),
 
   // Parse result
   parseResult: null,
   setParseResult: (result) => set({ parseResult: result }),
+
+  transactionType: null,
+  setTransactionType: (type) => set({ transactionType: type }),
 
   // Loading
   isLoading: false,

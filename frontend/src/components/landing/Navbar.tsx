@@ -17,6 +17,7 @@ function LogoIcon() {
   )
 }
 
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
 
@@ -43,6 +44,7 @@ export default function Navbar() {
         transition: 'background 0.3s ease, border-color 0.3s ease',
       }}
     >
+
       {/* Logo */}
       <a
         href="/"
