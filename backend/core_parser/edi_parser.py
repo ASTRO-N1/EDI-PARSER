@@ -148,10 +148,6 @@ REQUIRED_SEGMENTS: dict = {
     "2010BB": {
         "NM1": ("NM1 - Payer Name",
                 "Loop 2010BB must contain an NM1 segment identifying the payer."),
-        "N3":  ("N3 - Payer Address",
-                "Loop 2010BB must contain an N3 segment."),
-        "N4":  ("N4 - Payer City/State/ZIP",
-                "Loop 2010BB must contain an N4 segment."),
     },
     "2000C": {
         "HL":  ("HL - Patient Hierarchical Level",
@@ -412,7 +408,7 @@ class EDIParser:
 
         # ── FIX 1: Open HEADER at ISA so envelope segments are recorded ──────
         if seg_id == "ISA":
-            self._open_loop("HEADER", line)
+            self._push_loop("HEADER", line)
 
         # ── Record segment in current open loop ─────────────────────────────
         if self._open_loops:
