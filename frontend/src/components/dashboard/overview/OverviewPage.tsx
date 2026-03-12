@@ -20,18 +20,19 @@ export default function OverviewPage() {
   }, [parseResult])
 
   const data = parseResult?.data as Record<string, unknown> | undefined
-  const metadata = data?.metadata as Record<string, unknown> | undefined
-  const validation = data?.validation as Record<string, unknown> | undefined
+  const metrics = data?.metrics as Record<string, unknown> | undefined
+  const errorsArr = (data?.errors as unknown[]) ?? []
+  const warningsArr = (data?.warnings as unknown[]) ?? []
 
-  const errCount = (validation?.error_count as number) ?? 0
-  const warnCount = (validation?.warning_count as number) ?? 0
-  const totalSegments = (metadata?.total_segments as number) ?? '--'
-  const claimsCount = (metadata?.transaction_set_count as number) ?? '--'
-  const fileSizeRaw = (data?.file_info as Record<string, unknown> | undefined)?.file_size_bytes as number | undefined
-  const fileSize = fileSizeRaw ? (fileSizeRaw / 1024).toFixed(1) + ' KB' : '--'
+  const errCount = errorsArr.length
+  const warnCount = warningsArr.length
+  const totalSegments = (metrics?.total_segments as number) ?? '--'
+  const transactions = data?.transactions as unknown[] | undefined
+  const claimsCount = (metrics?.total_claims as number) ?? (transactions?.length ?? '--')
+  const fileName = (parseResult?.filename as string) ?? '--'
 
   const hasData = parseResult !== null
-  const isValid = errCount === 0 && warnCount === 0
+  const isValid = hasData && errCount === 0 && warnCount === 0
 
   useEffect(() => {
     if (!validRoughRef.current || !validPanelRef.current) return
@@ -109,10 +110,10 @@ export default function OverviewPage() {
         />
         <KPICard
           label="File Size"
-          value={fileSize}
+          value="--"
           icon="📁"
           color={t.yellow}
-          subtext="--"
+          subtext={fileName}
           decoration="diamond"
           delay={240}
         />
@@ -194,7 +195,7 @@ export default function OverviewPage() {
             ) : (
               // Show errors and warnings
               <>
-                {(validation?.errors as string[])?.map((err, i) => (
+                {errorsArr.map((err: any, i) => (
                   <div key={`err-${i}`} style={{
                     background: isDark ? 'rgba(255,107,107,0.12)' : '#FFF0F0',
                     borderLeft: `4px solid ${t.coral}`,
@@ -205,10 +206,10 @@ export default function OverviewPage() {
                     color: t.ink,
                     lineHeight: 1.4,
                   }}>
-                    <strong style={{ color: t.coral }}>Error:</strong> {err}
+                    <strong style={{ color: t.coral }}>Error:</strong> {err.message ?? String(err)}
                   </div>
                 ))}
-                {(validation?.warnings as string[])?.map((warn, i) => (
+                {warningsArr.map((warn: any, i) => (
                   <div key={`warn-${i}`} style={{
                     background: isDark ? 'rgba(255,230,109,0.08)' : '#FFFBF0',
                     borderLeft: `4px solid ${t.yellow}`,
@@ -219,7 +220,7 @@ export default function OverviewPage() {
                     color: t.ink,
                     lineHeight: 1.4,
                   }}>
-                    <strong style={{ color: t.yellow }}>Warning:</strong> {warn}
+                    <strong style={{ color: t.yellow }}>Warning:</strong> {warn.message ?? String(warn)}
                   </div>
                 ))}
               </>

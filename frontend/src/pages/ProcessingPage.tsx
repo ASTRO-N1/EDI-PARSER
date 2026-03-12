@@ -76,7 +76,7 @@ export default function ProcessingPage() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px',
-      background: '#FDFAF4'
+      background: '#F5EFE0'
     }}>
       <div style={{
         width: '100%',
@@ -87,7 +87,7 @@ export default function ProcessingPage() {
         flexDirection: 'row',
         alignItems: 'center',
         gap: '48px',
-        background: '#FDFAF4',
+        background: '#F5EFE0',
         position: 'relative'
       }}>
         {/* Rough Border around inner content */}
