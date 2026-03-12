@@ -25,6 +25,11 @@ def health_check():
     """Simple health check endpoint."""
     return {"status": "online", "message": "EDI Engine is ready."}
 
+@app.options("/api/v1/parse")
+def options_parse_edi_file():
+    """Explicitly handle OPTIONS preflight request for the parse endpoint."""
+    return {}
+
 @app.post("/api/v1/parse")
 async def parse_edi_file(file: UploadFile = File(...)):
     """Receives an EDI file, parses it, validates it, and returns the JSON tree."""
