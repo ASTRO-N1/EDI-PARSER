@@ -139,17 +139,34 @@ function HipaaHeading() {
   const inView = useInView(containerRef, { once: true, margin: '-100px' })
 
   useEffect(() => {
+    let timeoutId: number
+    let annotation: any
+
     if (inView && ref.current) {
-      const annotation = annotate(ref.current, {
-        type: 'circle',
-        color: '#FF6B6B',
-        strokeWidth: 3,
-        animate: true,
-        animationDuration: 800,
-        padding: 8,
+      const run = () => {
+        if (!ref.current) return
+        annotation = annotate(ref.current, {
+          type: 'circle',
+          color: '#FF6B6B',
+          strokeWidth: 3,
+          animate: true,
+          animationDuration: 800,
+          padding: 8,
+        })
+        annotation.show()
+      }
+
+      // Wait for fonts + layout to be fully ready
+      document.fonts.ready.then(() => {
+        timeoutId = window.setTimeout(run, 100) // small delay lets layout settle
       })
-      annotation.show()
-      return () => annotation.remove()
+
+      return () => {
+        window.clearTimeout(timeoutId)
+        if (annotation) {
+          annotation.remove()
+        }
+      }
     }
   }, [inView])
 
