@@ -52,7 +52,7 @@ export default function Footer() {
                 color: '#FDFAF4',
               }}
             >
-              EDI Inspector
+              EdiFix
             </span>
           </div>
           <p
@@ -83,7 +83,7 @@ export default function Footer() {
             Links
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" style={linkStyle}>
+            <a href="https://github.com/ASTRO-N1/EDI-PARSER" target="_blank" rel="noopener noreferrer" style={linkStyle}>
               GitHub
             </a>
             <a href="#" style={linkStyle}>Docs</a>

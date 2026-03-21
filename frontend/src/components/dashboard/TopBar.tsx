@@ -60,7 +60,7 @@ export default function TopBar() {
           {title}
         </div>
         <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 400, fontSize: 11, color: t.inkFaint, marginTop: 1 }}>
-          EDI Inspector / {title}
+          EdiFix / {title}
         </div>
       </div>
 

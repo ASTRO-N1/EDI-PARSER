@@ -68,14 +68,14 @@ export default function Navbar() {
             letterSpacing: '-0.3px',
           }}
         >
-          EDI Inspector
+          EdiFix
         </span>
       </a>
 
       {/* Right side buttons */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         <a
-          href="https://github.com"
+          href="https://github.com/ASTRO-N1/EDI-PARSER"
           target="_blank"
           rel="noopener noreferrer"
           className="btn-sticker"

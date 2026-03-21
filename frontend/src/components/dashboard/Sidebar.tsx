@@ -144,7 +144,7 @@ export default function Sidebar() {
             <circle cx="12" cy="4" r="1.5" />
           </svg>
           <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 18, color: t.ink }}>
-            EDI Inspector
+            EdiFix
           </span>
         </div>
         <svg ref={underlineRef} width={110} height={8} style={{ display: 'block', marginTop: 2 }} />
