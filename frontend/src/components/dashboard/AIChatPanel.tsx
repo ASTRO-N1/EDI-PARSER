@@ -14,9 +14,9 @@ export default function AIChatPanel() {
     setInputVal('')
     setIsTyping(true)
     setTimeout(() => {
-      setMessages(prev => [...prev, { 
-        role: 'ai', 
-        text: "🚀 AI analysis coming soon! Once connected to Gemini, I'll give you full segment-by-segment insights for this EDI file." 
+      setMessages(prev => [...prev, {
+        role: 'ai',
+        text: "🚀 AI analysis coming soon By ROMA! Once connected to Gemini, I'll give you full segment-by-segment insights for this EDI file."
       }])
       setIsTyping(false)
     }, 1200)
@@ -66,7 +66,7 @@ export default function AIChatPanel() {
           }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <polyline points="9,18 15,12 9,6"/>
+            <polyline points="9,18 15,12 9,6" />
           </svg>
         </button>
         <div style={{
@@ -118,7 +118,7 @@ export default function AIChatPanel() {
             Powered by Gemini
           </div>
         </div>
-        <button 
+        <button
           onClick={() => setIsOpen(false)}
           style={{
             width: 28, height: 28,
@@ -140,7 +140,7 @@ export default function AIChatPanel() {
           }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <polyline points="15,18 9,12 15,6"/>
+            <polyline points="15,18 9,12 15,6" />
           </svg>
         </button>
       </div>
@@ -149,7 +149,7 @@ export default function AIChatPanel() {
         {messages.length === 0 ? (
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {['💡 Explain this EDI file', '🔍 What do the segments mean?', '⚠️ Any issues with this file?'].map((chip, i) => (
-              <div 
+              <div
                 key={i}
                 onClick={() => handleSend(chip)}
                 className="chat-chip"
