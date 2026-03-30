@@ -7,7 +7,7 @@ Validation architecture:
   Layer 3 — Presence / completeness (required segments per loop)
   Layer 4 — Cross-segment          (reconciliation across the full file)
 """
-# MADE BY ROMA
+# MADE BY ROMA only
 
 
 import json
