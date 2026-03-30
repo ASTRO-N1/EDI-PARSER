@@ -146,7 +146,7 @@ export default function SegmentTree() {
   const roughRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
+  const drawBorder = () => {
     if (!roughRef.current || !containerRef.current) return
     const svg = roughRef.current
     svg.innerHTML = ''
@@ -161,7 +161,16 @@ export default function SegmentTree() {
       stroke: isDark ? 'rgba(240,235,225,0.35)' : t.roughStroke,
       fill: 'none',
     }))
-  })
+  }
+
+  // Redraw on mount, theme change, and whenever the container is resized
+  useEffect(() => {
+    drawBorder()
+    if (!containerRef.current) return
+    const ro = new ResizeObserver(() => drawBorder())
+    ro.observe(containerRef.current)
+    return () => ro.disconnect()
+  }, [isDark, t.roughStroke])
 
   // Group segments
   const rawSegments = (parseResult?.data as Record<string, unknown> | undefined)?.segments as unknown[] | undefined
