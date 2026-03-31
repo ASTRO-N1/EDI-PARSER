@@ -39,7 +39,7 @@ export default function Navbar() {
         left: 0,
         right: 0,
         zIndex: 100,
-        padding: '14px 32px',
+        padding: '24px 52px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -67,7 +67,7 @@ export default function Navbar() {
           style={{
             fontFamily: 'Nunito, sans-serif',
             fontWeight: 700,
-            fontSize: 20,
+            fontSize: 30,
             color: '#1A1A2E',
             letterSpacing: '-0.3px',
           }}
@@ -107,7 +107,7 @@ export default function Navbar() {
           style={{
             padding: '8px 18px',
             borderRadius: 8,
-            fontSize: 14,
+            fontSize: 18,
             color: '#1A1A2E',
             background: 'transparent',
             textDecoration: 'none',
@@ -123,7 +123,7 @@ export default function Navbar() {
             style={{
               padding: '8px 18px',
               borderRadius: 8,
-              fontSize: 14,
+              fontSize: 18,
               color: '#1A1A2E',
               background: '#4ECDC4',
               border: '2.5px solid #1A1A2E',
@@ -140,7 +140,7 @@ export default function Navbar() {
             style={{
               padding: '8px 18px',
               borderRadius: 8,
-              fontSize: 14,
+              fontSize: 18,
               color: '#1A1A2E',
               background: '#4ECDC4',
               border: '2.5px solid #1A1A2E',

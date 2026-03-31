@@ -145,7 +145,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 1.1 }}
-          style={{ marginTop: 16 }}
+          style={{ marginTop: 45 }}
         >
           <a
             href="/auth"
@@ -181,8 +181,8 @@ export default function Hero() {
         transition={{ duration: 0.5, delay: 1.2, ease: 'easeOut' }}
         style={{
           position: 'absolute',
-          left: '51%',
-          top: '48%',
+          left: '52%',
+          top: '45%',
           transform: 'translate(-50%, -50%)',
           zIndex: 10,
           pointerEvents: 'none',

@@ -1,9 +1,11 @@
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
+from pydantic import BaseModel
 import os
 import tempfile
 import uvicorn
+from groq import Groq
 from core_parser.edi_parser import EDIParser
 from auth import verify_api_key, generate_api_key
 import httpx
@@ -13,6 +15,9 @@ load_dotenv(override=True)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+# ── Groq setup ────────────────────────────────────────────────────────────────
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Initialize the API
 app = FastAPI(
@@ -30,8 +35,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# \u2500\u2500 Request model \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+class ChatRequest(BaseModel):
+    message: str
+    parseResult: dict | None = None
+    transactionType: str | None = None
 
-# ── Health check ─────────────────────────────────────────────────────────────
+# \u2500\u2500 AI Chat endpoint \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+@app.post("/chat")
+async def chat(req: ChatRequest):
+    system_prompt = """You are an expert EDI (Electronic Data Interchange) assistant.
+Help the user understand their EDI file, explain segments and fields in simple terms, and identify any errors or issues.
+Be concise, clear, and friendly."""
+
+    user_message = f"""Transaction Type: {req.transactionType or 'Unknown'}
+
+Parsed EDI Data:
+{req.parseResult or 'No file parsed yet.'}
+
+User Question: {req.message}"""
+
+    try:
+        completion = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            max_tokens=1024,
+        )
+        reply = completion.choices[0].message.content
+    except Exception as e:
+        reply = f"\u26a0\ufe0f AI error: {str(e)}"
+
+    return {"reply": reply}
+
+
+# \u2500\u2500 Health check \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 @app.get("/")
 def health_check():
     """Simple health check endpoint."""
