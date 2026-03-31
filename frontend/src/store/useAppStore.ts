@@ -12,6 +12,8 @@ interface AppState {
   // Auth state
   session: Session | null
   setSession: (session: Session | null) => void
+  authLoading: boolean
+  setAuthLoading: (loading: boolean) => void
 
   // File state
   ediFile: EDIFile
@@ -46,6 +48,8 @@ const useAppStore = create<AppState>((set) => ({
   // Auth state
   session: null,
   setSession: (session) => set({ session }),
+  authLoading: true,
+  setAuthLoading: (loading) => set({ authLoading: loading }),
 
   // File state
   ediFile: {

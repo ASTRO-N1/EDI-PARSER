@@ -12,18 +12,23 @@ import './index.css'
 
 function AuthListener() {
   const setSession = useAppStore(s => s.setSession)
+  const setAuthLoading = useAppStore(s => s.setAuthLoading)
 
   useEffect(() => {
-    // Set initial session
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    // Check for existing session first, then mark loading done
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setAuthLoading(false)          // ← auth state is now known
+    })
 
     // Listen for auth state changes (login / logout / token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
+      setAuthLoading(false)          // ← also mark done on any change
     })
 
     return () => subscription.unsubscribe()
-  }, [setSession])
+  }, [setSession, setAuthLoading])
 
   return null
 }

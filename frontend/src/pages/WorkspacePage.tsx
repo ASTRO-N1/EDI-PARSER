@@ -36,9 +36,29 @@ function SidebarItem({ icon, label, onClick, danger }: { icon: string; label: st
 
 export default function WorkspacePage() {
   const navigate = useNavigate()
-  const { session } = useAppStore()
+  const { session, authLoading } = useAppStore()
 
-  // ── Route guard: redirect to /auth if not logged in ──
+  // ── While auth is initializing, show nothing (or a tiny spinner) ──
+  if (authLoading) {
+    return (
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#FDFAF4',
+        flexDirection: 'column',
+        gap: 16,
+      }}>
+        <div className="doodle-spinner" style={{ width: 48, height: 48 }} />
+        <p style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 14, color: 'rgba(26,26,46,0.5)' }}>
+          Loading your workspace...
+        </p>
+      </div>
+    )
+  }
+
+  // ── Route guard: only redirect after we know there's no session ──
   if (!session) {
     return <Navigate to="/auth" replace />
   }
