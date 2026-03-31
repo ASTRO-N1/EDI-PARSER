@@ -3,31 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 
-// ── Hand-drawn lock icon above the card ─────────────────────────────────────
-function LockIcon() {
-  return (
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      {/* Shackle (top arc of the lock) */}
-      <path
-        d="M18 28 L18 20 C18 11 46 11 46 20 L46 28"
-        stroke="#1A1A2E"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {/* Lock body */}
-      <rect x="10" y="27" width="44" height="32" rx="6" fill="#FFE66D" stroke="#1A1A2E" strokeWidth="3" />
-      {/* Keyhole circle */}
-      <circle cx="32" cy="41" r="6" fill="#1A1A2E" />
-      {/* Keyhole slot */}
-      <rect x="29" y="44" width="6" height="8" rx="3" fill="#1A1A2E" />
-      {/* Small sparkle top-right of shackle */}
-      <path d="M50 10 L51.2 13.5 L55 14.5 L51.2 15.5 L50 19 L48.8 15.5 L45 14.5 L48.8 13.5 Z" fill="#4ECDC4" />
-    </svg>
-  )
-}
-
 // ── Google "G" icon ──────────────────────────────────────────────────────────
 function GoogleIcon() {
   return (
