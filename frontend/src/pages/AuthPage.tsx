@@ -45,7 +45,7 @@ export default function AuthPage() {
     setError(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/workspace` },
+      options: { redirectTo: `${window.location.origin}/` },
     })
     if (error) setError(error.message)
   }
@@ -67,7 +67,7 @@ export default function AuthPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        navigate('/workspace')
+        navigate('/')
       }
     } catch (err: any) {
       setError(err.message ?? 'Something went wrong')

@@ -78,6 +78,27 @@ export default function Navbar() {
 
       {/* Right side */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <button
+          id="navbar-for-developers-btn"
+          onClick={() => {
+            const el = document.getElementById('for-developers')
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+          className="btn-sticker"
+          style={{
+            padding: '8px 18px',
+            borderRadius: 8,
+            fontSize: 14,
+            color: '#1A1A2E',
+            background: '#FFE66D',
+            border: '2.5px solid #1A1A2E',
+            cursor: 'pointer',
+            transform: 'rotate(0.5deg)',
+          }}
+        >
+          For Devs ⚡
+        </button>
+
         <a
           href="https://github.com/ASTRO-N1/EDI-PARSER"
           target="_blank"
