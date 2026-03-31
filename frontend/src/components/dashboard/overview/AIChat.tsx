@@ -13,7 +13,7 @@ const SUGGESTIONS = [
   { icon: '⚠️', text: 'Are there any issues?' },
 ]
 
-const AI_RESPONSE = "🚀 AI integration coming soon! The Gemini API will power full EDI analysis here."
+const AI_RESPONSE = "🚀 AI integration coming soon by ROMA! The Gemini API will power full EDI analysis here."
 
 export default function AIChat() {
   const [messages, setMessages] = useState<Message[]>([])
