@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTheme } from '../../theme/ThemeContext'
+import useAppStore from '../../store/useAppStore'
 
 export default function AIChatPanel() {
   const [isOpen, setIsOpen] = useState(true)
@@ -7,19 +8,37 @@ export default function AIChatPanel() {
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([])
   const [isTyping, setIsTyping] = useState(false)
   const { t, isDark } = useTheme()
+  const { parseResult, transactionType } = useAppStore()
 
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
     if (!text.trim()) return
     setMessages(prev => [...prev, { role: 'user', text }])
     setInputVal('')
     setIsTyping(true)
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        role: 'ai',
-        text: "🚀 AI analysis coming soon By ROMA! Once connected to Gemini, I'll give you full segment-by-segment insights for this EDI file."
-      }])
+
+    try {
+      const apiUrl = 'https://edi-parser-production.up.railway.app'
+      const res = await fetch(`${apiUrl}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          parseResult: parseResult,
+          transactionType: transactionType
+        })
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to connect to AI backend.')
+      }
+
+      const data = await res.json()
+      setMessages(prev => [...prev, { role: 'ai', text: data.reply }])
+    } catch (err: any) {
+      setMessages(prev => [...prev, { role: 'ai', text: `⚠️ Error: ${err.message}` }])
+    } finally {
       setIsTyping(false)
-    }, 1200)
+    }
   }
 
   if (!isOpen) {

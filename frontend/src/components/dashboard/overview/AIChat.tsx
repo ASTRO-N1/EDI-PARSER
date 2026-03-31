@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import rough from 'roughjs'
+import useAppStore from '../../../store/useAppStore'
 
 interface Message {
   role: 'user' | 'ai'
@@ -13,8 +14,6 @@ const SUGGESTIONS = [
   { icon: '⚠️', text: 'Are there any issues?' },
 ]
 
-const AI_RESPONSE = "🚀 AI integration coming soon by ROMA! The Gemini API will power full EDI analysis here."
-
 export default function AIChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -22,6 +21,7 @@ export default function AIChat() {
   const underlineRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
+  const { parseResult, transactionType } = useAppStore()
 
   useEffect(() => {
     if (!roughRef.current || !containerRef.current) return
@@ -51,17 +51,37 @@ export default function AIChat() {
     }
   }, [messages])
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     const msg = text.trim()
     if (!msg) return
     setInput('')
     setMessages(prev => [...prev, { role: 'user', content: msg }, { role: 'ai', content: '', typing: true }])
 
-    setTimeout(() => {
+    try {
+      const apiUrl = 'https://edi-parser-production.up.railway.app'
+      const res = await fetch(`${apiUrl}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: msg, 
+          parseResult: parseResult, 
+          transactionType: transactionType 
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to connect to AI backend.')
+      }
+
+      const data = await res.json()
       setMessages(prev => prev.map((m, i) =>
-        i === prev.length - 1 ? { role: 'ai', content: AI_RESPONSE, typing: false } : m
+        i === prev.length - 1 ? { role: 'ai', content: data.reply, typing: false } : m
       ))
-    }, 1200)
+    } catch (err: any) {
+      setMessages(prev => prev.map((m, i) =>
+        i === prev.length - 1 ? { role: 'ai', content: `⚠️ Error: ${err.message}`, typing: false } : m
+      ))
+    }
   }
 
   return (
