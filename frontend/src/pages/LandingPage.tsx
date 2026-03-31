@@ -3,6 +3,7 @@ import Hero from '../components/landing/Hero'
 import StatsBar from '../components/landing/StatsBar'
 import Features from '../components/landing/Features'
 import HowItWorks from '../components/landing/HowItWorks'
+import ForDevelopers from '../components/landing/ForDevelopers'
 import CTABand from '../components/landing/CTABand'
 import Footer from '../components/landing/Footer'
 import '../styles/doodle.css'
@@ -19,6 +20,7 @@ export default function LandingPage() {
       <StatsBar />
       <Features />
       <HowItWorks />
+      <ForDevelopers />
       <CTABand />
       <Footer />
     </div>

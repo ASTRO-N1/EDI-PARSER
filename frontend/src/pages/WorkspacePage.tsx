@@ -108,7 +108,9 @@ export default function WorkspacePage() {
 
         {/* Nav items */}
         <SidebarItem icon="➕" label="New Parse" onClick={() => navigate('/')} />
+        <SidebarItem icon="📚" label="API Docs" onClick={() => navigate('/docs')} />
         <SidebarItem icon="🗂" label="File History" />
+        <SidebarItem icon="🔑" label="API Keys" onClick={() => navigate('/developer')} />
         <SidebarItem icon="⚙️" label="Settings" />
 
         {/* Spacer */}
@@ -203,32 +205,101 @@ export default function WorkspacePage() {
             Start by parsing your first EDI file!
           </p>
 
-          <motion.button
-            whileHover={{ y: -3, boxShadow: '6px 6px 0px #1A1A2E' }}
-            whileTap={{ y: 0, boxShadow: '2px 2px 0px #1A1A2E' }}
-            onClick={() => navigate('/')}
+          {/* Quick-action cards */}
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 32, flexWrap: 'wrap' }}>
+            <motion.button
+              whileHover={{ y: -3, boxShadow: '6px 6px 0px #1A1A2E' }}
+              whileTap={{ y: 0, boxShadow: '2px 2px 0px #1A1A2E' }}
+              onClick={() => navigate('/')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '14px 28px',
+                background: '#4ECDC4',
+                border: '2.5px solid #1A1A2E',
+                borderRadius: '10px 12px 8px 11px / 11px 8px 12px 10px',
+                boxShadow: '4px 4px 0px #1A1A2E',
+                fontFamily: 'Nunito, sans-serif',
+                fontWeight: 800,
+                fontSize: 16,
+                color: '#1A1A2E',
+                cursor: 'pointer',
+                transform: 'rotate(0.5deg)',
+              }}
+            >
+              Parse a New File
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M3 9h12M10 4l5 5-5 5" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ y: -3, boxShadow: '6px 6px 0px #1A1A2E' }}
+              whileTap={{ y: 0, boxShadow: '2px 2px 0px #1A1A2E' }}
+              onClick={() => navigate('/developer')}
+              id="workspace-api-keys-btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '14px 28px',
+                background: '#FFE66D',
+                border: '2.5px solid #1A1A2E',
+                borderRadius: '12px 10px 11px 10px / 10px 11px 10px 12px',
+                boxShadow: '4px 4px 0px #1A1A2E',
+                fontFamily: 'Nunito, sans-serif',
+                fontWeight: 800,
+                fontSize: 16,
+                color: '#1A1A2E',
+                cursor: 'pointer',
+                transform: 'rotate(-0.5deg)',
+              }}
+            >
+              🔑 Manage API Keys
+            </motion.button>
+          </div>
+
+          {/* API Docs quick-access card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            onClick={() => navigate('/docs')}
             style={{
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '14px 28px',
-              background: '#4ECDC4',
-              border: '2.5px solid #1A1A2E',
-              borderRadius: '10px 12px 8px 11px / 11px 8px 12px 10px',
-              boxShadow: '4px 4px 0px #1A1A2E',
-              fontFamily: 'Nunito, sans-serif',
-              fontWeight: 800,
-              fontSize: 16,
-              color: '#1A1A2E',
+              gap: 18,
+              padding: '16px 24px',
+              background: '#FFFFFF',
+              border: '2px solid #1A1A2E',
+              borderRadius: 12,
+              boxShadow: '4px 4px 0 #1A1A2E',
               cursor: 'pointer',
-              transform: 'rotate(0.5deg)',
+              maxWidth: 420,
+              width: '100%',
+              margin: '0 auto',
+              transform: 'rotate(-0.3deg)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
             }}
+            whileHover={{ y: -4, boxShadow: '7px 7px 0 #1A1A2E' } as never}
           >
-            Parse a New File
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M3 9h12M10 4l5 5-5 5" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </motion.button>
+            <div style={{
+              width: 44, height: 44, borderRadius: 10,
+              background: '#FFFFFF', border: '2px solid #1A1A2E',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 22, flexShrink: 0,
+            }}>📚</div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 15, color: '#1A1A2E' }}>
+                Developer API Docs
+              </div>
+              <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 13, color: 'rgba(26,26,46,0.55)', marginTop: 2 }}>
+                In-depth documentation · JSON schemas · Guides
+              </div>
+            </div>
+            <div style={{ marginLeft: 'auto', color: 'rgba(26,26,46,0.35)', fontSize: 20 }}>→</div>
+          </motion.div>
         </motion.div>
       </div>
     </div>
