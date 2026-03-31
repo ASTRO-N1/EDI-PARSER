@@ -118,7 +118,7 @@ async def parse_edi_file(
             "status": "success",
             "filename": file.filename,
             "data": final_tree,
-            "called_by": api_caller.get("name", "unknown"),
+            "called_by": api_caller.get("name", "unknown") if api_caller else "web-dashboard",
         }
 
     except Exception as e:

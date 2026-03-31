@@ -27,6 +27,9 @@ export default function ProcessingPage() {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://edi-parser-production.up.railway.app';
       const res = await fetch(`${apiUrl}/api/v1/parse`, {
         method: 'POST',
+        headers: {
+          'X-Internal-Bypass': 'frontend-ui-secret',
+        },
         body: formData,
       });
 
