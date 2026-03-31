@@ -98,7 +98,9 @@ export default function DeveloperDashboard() {
   const fetchKeys = useCallback(async () => {
     if (!session) return
     try {
-      const res = await fetch(`${API_URL}/api/v1/keys/${session.user.id}`)
+      const res = await fetch(`${API_URL}/api/v1/keys`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
       if (res.ok) setKeys(await res.json())
     } catch {
       // silent fail
@@ -116,8 +118,11 @@ export default function DeveloperDashboard() {
     try {
       const res = await fetch(`${API_URL}/api/v1/keys`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: session.user.id, name: newKeyName.trim() }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ name: newKeyName.trim() }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -133,9 +138,13 @@ export default function DeveloperDashboard() {
 
   // ── Revoke key ─────────────────────────────────────────────────────────────
   const handleRevoke = async (keyId: string) => {
+    if (!session) return
     setRevoking(keyId)
     try {
-      await fetch(`${API_URL}/api/v1/keys/${keyId}`, { method: 'DELETE' })
+      await fetch(`${API_URL}/api/v1/keys/${keyId}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
       setKeys(prev => prev.filter(k => k.id !== keyId))
     } finally {
       setRevoking(null)
@@ -431,7 +440,7 @@ print(response.json())`
                 </div>
                 {[
                   { method: 'POST', path: '/api/v1/parse', desc: 'Parse an EDI file' },
-                  { method: 'GET', path: '/api/v1/keys/{user_id}', desc: 'List your keys' },
+                  { method: 'GET', path: '/api/v1/keys', desc: 'List your keys' },
                   { method: 'DELETE', path: '/api/v1/keys/{key_id}', desc: 'Revoke a key' },
                 ].map(ep => (
                   <div key={ep.path} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 8 }}>

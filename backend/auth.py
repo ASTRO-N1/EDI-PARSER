@@ -33,7 +33,32 @@ def generate_api_key() -> tuple[str, str, str]:
     return raw, hashed, prefix
 
 
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status, Request, Header
+
+async def verify_supabase_session(authorization: str = Header(...)) -> str:
+    """
+    Validates a frontend Supabase JWT token and safely returns the user ID.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Missing or invalid session token",
+    )
+    if not authorization or not authorization.startswith("Bearer "):
+        raise credentials_exception
+
+    headers = {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": authorization,
+    }
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{SUPABASE_URL}/auth/v1/user", headers=headers)
+
+    if resp.status_code != 200:
+        raise credentials_exception
+
+    user_data = resp.json()
+    return user_data["id"]
 
 async def verify_api_key(request: Request, authorization: str = Depends(api_key_header)) -> dict:
     """

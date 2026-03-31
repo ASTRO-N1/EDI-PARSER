@@ -7,7 +7,7 @@ import tempfile
 import uvicorn
 from groq import Groq
 from core_parser.edi_parser import EDIParser
-from auth import verify_api_key, generate_api_key
+from auth import verify_api_key, generate_api_key, verify_supabase_session
 import httpx
 from dotenv import load_dotenv
 
@@ -132,13 +132,13 @@ async def parse_edi_file(
 # ── API Key management endpoints (called by the frontend dashboard) ───────────
 
 @app.post("/api/v1/keys")
-async def create_api_key(payload: dict = Body(...)):
+async def create_api_key(payload: dict = Body(...), verified_user_id: str = Depends(verify_supabase_session)):
     """
-    Generate a new API key for a given user_id.
+    Generate a new API key for the verified user.
     Called by the frontend after the user is signed in.
-    Body: { "user_id": "...", "name": "My Key" }
+    Body: { "name": "My Key" }
     """
-    user_id = payload.get("user_id")
+    user_id = verified_user_id
     name = payload.get("name", "My API Key")
 
     if not user_id:
@@ -179,8 +179,8 @@ async def create_api_key(payload: dict = Body(...)):
     }
 
 
-@app.get("/api/v1/keys/{user_id}")
-async def list_api_keys(user_id: str):
+@app.get("/api/v1/keys")
+async def list_api_keys(verified_user_id: str = Depends(verify_supabase_session)):
     """
     List all API keys (masked) for a user.
     """
@@ -194,7 +194,7 @@ async def list_api_keys(user_id: str):
             f"{SUPABASE_URL}/rest/v1/api_keys",
             headers=headers,
             params={
-                "user_id": f"eq.{user_id}",
+                "user_id": f"eq.{verified_user_id}",
                 "select": "id,name,key_prefix,created_at,last_used_at",
                 "order": "created_at.desc",
             },
@@ -207,9 +207,9 @@ async def list_api_keys(user_id: str):
 
 
 @app.delete("/api/v1/keys/{key_id}")
-async def revoke_api_key(key_id: str):
+async def revoke_api_key(key_id: str, verified_user_id: str = Depends(verify_supabase_session)):
     """
-    Revoke (delete) an API key by its UUID.
+    Revoke (delete) an API key by its UUID, verifying ownership.
     """
     headers = {
         "apikey": SUPABASE_SERVICE_ROLE_KEY,
@@ -220,7 +220,7 @@ async def revoke_api_key(key_id: str):
         resp = await client.delete(
             f"{SUPABASE_URL}/rest/v1/api_keys",
             headers=headers,
-            params={"id": f"eq.{key_id}"},
+            params={"id": f"eq.{key_id}", "user_id": f"eq.{verified_user_id}"},
         )
 
     if resp.status_code not in (200, 204):
