@@ -11,14 +11,6 @@ const SAMPLE_FILES = [
   { label: '835 Sample', type: '835' },
   { label: '834 Sample', type: '834' },
 ]
-
-const BADGES = [
-  '97,572 ICD-10 codes',
-  '1,198 RARC codes',
-  '407 CARC codes',
-  '8,184 HCPCS codes',
-]
-
 export default function UploadZone() {
   const navigate = useNavigate()
   const setEdiFile = useAppStore((s) => s.setEdiFile)
@@ -66,7 +58,7 @@ export default function UploadZone() {
   return (
     <div style={{ width: '100%' }}>
       {/* Sitting stick figure above upload box */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: -12, position: 'relative', zIndex: 2 }}>
+      <div style={{ display: 'flex', justifyContent: 'end', marginBottom: -75, top: -58, left:-85, position: 'relative', zIndex: 2 }}>
         <SittingStickFigure size={75} />
       </div>
 
@@ -144,37 +136,6 @@ export default function UploadZone() {
           >
             {s.label}
           </button>
-        ))}
-      </div>
-
-      {/* Reference data badges */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 8,
-          marginTop: 14,
-          justifyContent: 'center',
-        }}
-      >
-        {BADGES.map((b) => (
-          <span
-            key={b}
-            style={{
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: 11,
-              fontWeight: 600,
-              color: 'rgba(26,26,46,0.55)',
-              background: '#F5F0E8',
-              border: '1.5px solid rgba(26,26,46,0.15)',
-              borderRadius: 6,
-              padding: '3px 8px',
-              transform: Math.random() > 0.5 ? 'rotate(-0.5deg)' : 'rotate(0.5deg)',
-              display: 'inline-block',
-            }}
-          >
-            {b}
-          </span>
         ))}
       </div>
     </div>

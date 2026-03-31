@@ -39,7 +39,7 @@ export default function Navbar() {
         left: 0,
         right: 0,
         zIndex: 100,
-        padding: '14px 32px',
+        padding: '24px 52px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
