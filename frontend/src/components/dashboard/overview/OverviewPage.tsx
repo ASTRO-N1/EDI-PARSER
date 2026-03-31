@@ -5,6 +5,7 @@ import ClaimCard from './ClaimCard'
 import ValidationBadge from './ValidationBadge'
 import SegmentTree from './SegmentTree'
 import LoopSummary from './LoopSummary'
+import GuestUpsellCard from '../GuestUpsellCard'
 import useAppStore from '../../../store/useAppStore'
 import { useTheme } from '../../../theme/ThemeContext'
 
@@ -239,6 +240,9 @@ export default function OverviewPage() {
         <SegmentTree />
         <LoopSummary />
       </div>
+
+      {/* Guest upsell — shown below all data cards */}
+      <GuestUpsellCard />
     </div>
   )
 }

@@ -139,6 +139,39 @@ export default function Hero() {
         >
           <UploadZone />
         </motion.div>
+
+        {/* Secondary CTA — workspace signup */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, delay: 1.1 }}
+          style={{ marginTop: 16 }}
+        >
+          <a
+            href="/auth"
+            className="btn-sticker"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '12px 24px',
+              background: '#1A1A2E',
+              color: '#FDFAF4',
+              borderRadius: 10,
+              fontSize: 15,
+              fontWeight: 800,
+              textDecoration: 'none',
+              transform: 'rotate(-0.5deg)',
+              boxShadow: '5px 5px 0px #1A1A2E',
+              border: '2.5px solid #1A1A2E',
+            }}
+          >
+            Create Free Workspace
+            <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
+              <path d="M1 7h16M10 1l6 6-6 6" stroke="#FDFAF4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </a>
+        </motion.div>
       </div>
 
       {/* Hand-drawn arrow bridging upload → illustration */}

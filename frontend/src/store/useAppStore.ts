@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { Session } from '@supabase/supabase-js'
 
 interface EDIFile {
   file: File | null
@@ -8,6 +9,10 @@ interface EDIFile {
 }
 
 interface AppState {
+  // Auth state
+  session: Session | null
+  setSession: (session: Session | null) => void
+
   // File state
   ediFile: EDIFile
   setEdiFile: (file: File) => void
@@ -38,6 +43,10 @@ interface AppState {
 }
 
 const useAppStore = create<AppState>((set) => ({
+  // Auth state
+  session: null,
+  setSession: (session) => set({ session }),
+
   // File state
   ediFile: {
     file: null,

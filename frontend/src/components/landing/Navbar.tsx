@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import useAppStore from '../../store/useAppStore'
 
 function LogoIcon() {
   return (
@@ -20,6 +22,8 @@ function LogoIcon() {
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
+  const { session } = useAppStore()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 50)
@@ -72,7 +76,7 @@ export default function Navbar() {
         </span>
       </a>
 
-      {/* Right side buttons */}
+      {/* Right side */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         <a
           href="https://github.com/ASTRO-N1/EDI-PARSER"
@@ -90,21 +94,42 @@ export default function Navbar() {
         >
           View on GitHub
         </a>
-        <a
-          href="#"
-          className="btn-sticker"
-          style={{
-            padding: '8px 18px',
-            borderRadius: 8,
-            fontSize: 14,
-            color: '#FDFAF4',
-            background: '#1A1A2E',
-            textDecoration: 'none',
-            transform: 'rotate(0.5deg)',
-          }}
-        >
-          Read Docs
-        </a>
+
+        {session ? (
+          <button
+            onClick={() => navigate('/workspace')}
+            className="btn-sticker"
+            style={{
+              padding: '8px 18px',
+              borderRadius: 8,
+              fontSize: 14,
+              color: '#1A1A2E',
+              background: '#4ECDC4',
+              border: '2.5px solid #1A1A2E',
+              cursor: 'pointer',
+              transform: 'rotate(0.5deg)',
+            }}
+          >
+            My Workspace →
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate('/auth')}
+            className="btn-sticker"
+            style={{
+              padding: '8px 18px',
+              borderRadius: 8,
+              fontSize: 14,
+              color: '#1A1A2E',
+              background: '#4ECDC4',
+              border: '2.5px solid #1A1A2E',
+              cursor: 'pointer',
+              transform: 'rotate(1deg)',
+            }}
+          >
+            Join Now ✦
+          </button>
+        )}
       </div>
     </nav>
   )
