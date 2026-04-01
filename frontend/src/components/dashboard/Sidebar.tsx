@@ -81,7 +81,7 @@ function ActiveHighlight({ width, height, stroke }: { width: number; height: num
   return <svg ref={svgRef} width={width} height={height} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 2, overflow: 'hidden' }} />
 }
 
-export default function Sidebar() {
+export default function Sidebar({ onMobileClose }: { onMobileClose?: () => void } = {}) {
   const location = useLocation()
   const navigate = useNavigate()
   const { file, transactionType } = useAppStore()
@@ -227,7 +227,7 @@ export default function Sidebar() {
           return (
             <div
               key={idx}
-              onClick={() => navigate(item.path!)}
+              onClick={() => { navigate(item.path!); onMobileClose?.() }}
               style={{
                 padding: '10px 16px',
                 margin: '2px 12px',
@@ -338,7 +338,7 @@ export default function Sidebar() {
         </div>
 
         <div
-          onClick={() => navigate('/')}
+          onClick={() => { navigate('/'); onMobileClose?.() }}
           style={{
             padding: '8px 16px 20px',
             fontFamily: 'Nunito, sans-serif',

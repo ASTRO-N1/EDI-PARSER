@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
+import { useIsMobile } from '../hooks/useWindowWidth'
 
 // ── Google "G" icon ──────────────────────────────────────────────────────────
 function GoogleIcon() {
@@ -40,6 +41,7 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
 
   const handleGoogleLogin = async () => {
     setError(null)
@@ -89,6 +91,7 @@ export default function AuthPage() {
     outline: 'none',
     boxSizing: 'border-box',
     transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+    minHeight: 44,
   }
 
   return (
@@ -127,7 +130,7 @@ export default function AuthPage() {
             border: '2.5px solid #1A1A2E',
             borderRadius: '16px 14px 15px 16px / 14px 16px 14px 15px',
             boxShadow: '8px 8px 0px #1A1A2E',
-            padding: '32px 36px 36px',
+            padding: isMobile ? '24px 20px 28px' : '32px 36px 36px',
             position: 'relative',
           }}
         >
@@ -287,6 +290,7 @@ export default function AuthPage() {
                 fontSize: 16,
                 marginTop: 4,
                 opacity: loading ? 0.7 : 1,
+                minHeight: 44,
               }}
             >
               {loading ? '...' : tab === 'signup' ? 'Create My Account →' : 'Log In →'}

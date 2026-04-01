@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useTheme } from '../../theme/ThemeContext'
 import useAppStore from '../../store/useAppStore'
 
-export default function AIChatPanel() {
+export default function AIChatPanel({ onMobileClose }: { onMobileClose?: () => void } = {}) {
   const [isOpen, setIsOpen] = useState(true)
   const [inputVal, setInputVal] = useState('')
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([])
@@ -137,31 +137,47 @@ export default function AIChatPanel() {
             Powered by Gemini
           </div>
         </div>
-        <button
-          onClick={() => setIsOpen(false)}
-          style={{
-            width: 28, height: 28,
-            background: 'transparent',
-            border: `1.5px solid ${t.border}`,
-            color: t.inkMuted,
-            borderRadius: 6,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = t.ink;
-            e.currentTarget.style.borderColor = t.ink;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = t.inkMuted;
-            e.currentTarget.style.borderColor = t.border;
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <polyline points="15,18 9,12 15,6" />
-          </svg>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Mobile close button — only shown when in bottom-sheet mode */}
+          {onMobileClose && (
+            <button
+              onClick={onMobileClose}
+              aria-label="Close AI panel"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: t.inkMuted, display: 'flex', alignItems: 'center', minHeight: 44, minWidth: 44, justifyContent: 'center' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <line x1="2" y1="2" x2="14" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="14" y1="2" x2="2" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+          {/* Desktop collapse button */}
+          <button
+            onClick={() => setIsOpen(false)}
+            style={{
+              width: 28, height: 28,
+              background: 'transparent',
+              border: `1.5px solid ${t.border}`,
+              color: t.inkMuted,
+              borderRadius: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
+              e.currentTarget.style.color = t.ink;
+              e.currentTarget.style.borderColor = t.ink;
+            }}
+            onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
+              e.currentTarget.style.color = t.inkMuted;
+              e.currentTarget.style.borderColor = t.border;
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="15,18 9,12 15,6" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>

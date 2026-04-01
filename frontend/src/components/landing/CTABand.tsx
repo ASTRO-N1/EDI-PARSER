@@ -2,10 +2,12 @@ import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { JumpingStickFigure } from './StickFigure'
 import { WaveTop } from './DoodleElements'
+import { useIsMobile } from '../../hooks/useWindowWidth'
 
 export default function CTABand() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-100px' })
+  const isMobile = useIsMobile()
 
   const scrollToUpload = () => {
     document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' })
@@ -23,17 +25,14 @@ export default function CTABand() {
           overflow: 'hidden',
         }}
       >
-        {/* Jumping stick figure */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 20,
-            right: 'clamp(20px, 6%, 80px)',
-            pointerEvents: 'none',
-          }}
-        >
-          <JumpingStickFigure size={80} />
-        </div>
+        {/* Jumping stick figure — hide on mobile to avoid overlapping button text */}
+        {!isMobile && (
+          <div
+            style={{ position: 'absolute', top: 20, right: 'clamp(20px, 6%, 80px)', pointerEvents: 'none' }}
+          >
+            <JumpingStickFigure size={80} />
+          </div>
+        )}
 
         {/* Decorative stars */}
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', top: 30, left: '10%', opacity: 0.5 }} aria-hidden="true">
@@ -86,6 +85,7 @@ export default function CTABand() {
               boxShadow: '6px 6px 0px rgba(0,0,0,0.2)',
               fontFamily: 'Nunito, sans-serif',
               cursor: 'pointer',
+              minHeight: 44,
             }}
           >
             Start Parsing →

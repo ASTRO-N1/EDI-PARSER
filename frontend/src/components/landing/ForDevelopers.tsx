@@ -320,13 +320,14 @@ export default function ForDevelopers() {
               </span>
             </div>
 
-            {/* Tab toggle */}
+            {/* Tab toggle + copy button */}
             <div
               style={{
                 display: 'flex',
                 gap: 0,
                 padding: '14px 20px 0',
                 borderBottom: '1.5px solid rgba(255,255,255,0.08)',
+                alignItems: 'center',
               }}
             >
               {(['curl', 'python'] as const).map((t) => (
@@ -351,6 +352,30 @@ export default function ForDevelopers() {
                   {t === 'curl' ? 'cURL' : 'Python'}
                 </button>
               ))}
+
+              {/* Copy button — sits in the tab bar, no overlap */}
+              <button
+                id="dev-copy-snippet-btn"
+                onClick={handleCopy}
+                className="btn-sticker"
+                style={{
+                  marginLeft: 'auto',
+                  marginBottom: 8,
+                  padding: '4px 12px',
+                  borderRadius: 7,
+                  fontSize: 12,
+                  color: copied ? '#4ECDC4' : '#1A1A2E',
+                  background: copied ? '#1A1A2E' : '#FFE66D',
+                  border: '2px solid #FFE66D',
+                  cursor: 'pointer',
+                  boxShadow: '2px 2px 0 #FFE66D',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                {copied ? '✓ Copied!' : 'Copy'}
+              </button>
             </div>
 
             {/* Code block */}
@@ -398,29 +423,6 @@ export default function ForDevelopers() {
                   return <span key={li}>{line}{'\n'}</span>
                 })}
               </pre>
-
-              {/* Copy button */}
-              <button
-                id="dev-copy-snippet-btn"
-                onClick={handleCopy}
-                className="btn-sticker"
-                style={{
-                  position: 'absolute',
-                  top: 16,
-                  right: 16,
-                  padding: '5px 12px',
-                  borderRadius: 7,
-                  fontSize: 12,
-                  color: copied ? '#4ECDC4' : '#1A1A2E',
-                  background: copied ? '#1A1A2E' : '#FFE66D',
-                  border: '2px solid #FFE66D',
-                  cursor: 'pointer',
-                  boxShadow: '2px 2px 0 #FFE66D',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {copied ? '✓ Copied!' : 'Copy'}
-              </button>
             </div>
 
             {/* Footer hint */}

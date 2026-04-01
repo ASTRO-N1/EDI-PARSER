@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion, useAnimation } from 'framer-motion'
 
 interface StickFigureProps {
   size?: number
@@ -209,5 +210,95 @@ export function JumpingStickFigure({ size = 90 }: { size?: number }) {
       <line x1="40" y1="66" x2="18" y2="92" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
       <line x1="40" y1="66" x2="62" y2="92" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
+  )
+}
+
+/**
+ * WaitingFigure — a standing stick figure (eyes only, no mouth) with:
+ *  • Idle: gentle body sway loop (framer-motion animate repeat)
+ *  • Click: spring scale-bounce layered on a wrapper element, non-destructive
+ * Color matches the doodle theme palette. Used on the ProcessingPage.
+ */
+export function WaitingFigure({
+  size = 90,
+  color = '#4ECDC4',
+}: {
+  size?: number
+  color?: string
+}) {
+  const clickCtrl = useAnimation()
+
+  const handleClick = async () => {
+    // Quick reactive spring-pop — composed on the outer wrapper, doesn't touch idle sway
+    await clickCtrl.start({
+      scale: [1, 1.18, 0.93, 1.06, 1],
+      rotate: [0, -6, 5, -3, 0],
+      transition: { duration: 0.45, ease: 'easeInOut' },
+    })
+  }
+
+  return (
+    // Outer wrapper: absorbs the click bounce
+    <motion.div
+      animate={clickCtrl}
+      onClick={handleClick}
+      style={{ display: 'inline-block', cursor: 'pointer', transformOrigin: 'bottom center' }}
+    >
+      {/* Inner wrapper: idle sway — completely independent */}
+      <motion.div
+        animate={{
+          rotate: [0, 3, 0, -3, 0],
+          y: [0, -3, 0, -2, 0],
+        }}
+        transition={{
+          duration: 3.2,
+          ease: 'easeInOut',
+          repeat: Infinity,
+          repeatType: 'loop',
+        }}
+        style={{ transformOrigin: 'bottom center', display: 'block' }}
+      >
+        <svg
+          width={size}
+          height={size * 1.35}
+          viewBox="0 0 80 108"
+          fill="none"
+          aria-hidden="true"
+        >
+          {/* Head — slightly tilted, waiting feel */}
+          <circle cx="40" cy="16" r="12" stroke={color} strokeWidth="2.5" fill="none" />
+
+          {/* Eyes only — no mouth */}
+          <circle cx="36" cy="14" r="2" fill={color} />
+          <circle cx="44" cy="14" r="2" fill={color} />
+
+          {/* Eyelid lines for "bored waiting" expression */}
+          <line x1="34" y1="12.5" x2="38" y2="12.5" stroke={color} strokeWidth="1" strokeLinecap="round" />
+          <line x1="42" y1="12.5" x2="46" y2="12.5" stroke={color} strokeWidth="1" strokeLinecap="round" />
+
+          {/* Body */}
+          <line x1="40" y1="28" x2="40" y2="68" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+
+          {/* Left arm — hanging relaxed */}
+          <line x1="40" y1="42" x2="20" y2="58" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+
+          {/* Right arm — bent at elbow, hand near chin (leaning/bored wait) */}
+          <line x1="40" y1="42" x2="58" y2="38" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="58" y1="38" x2="56" y2="25" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+          {/* Small circle "chin rest" hand dot */}
+          <circle cx="56" cy="24" r="2.5" fill={color} />
+
+          {/* Left leg */}
+          <line x1="40" y1="68" x2="24" y2="96" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+
+          {/* Right leg */}
+          <line x1="40" y1="68" x2="56" y2="96" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+
+          {/* Feet */}
+          <line x1="24" y1="96" x2="16" y2="98" stroke={color} strokeWidth="2" strokeLinecap="round" />
+          <line x1="56" y1="96" x2="64" y2="98" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </motion.div>
+    </motion.div>
   )
 }

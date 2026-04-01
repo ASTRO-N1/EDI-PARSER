@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { useInView } from 'framer-motion'
 import { WaveTop, WaveBottom } from './DoodleElements'
+import { useIsMobile } from '../../hooks/useWindowWidth'
 
 const STATS = [
   { value: 97572, label: 'ICD-10-CM Codes Validated', formatted: '97,572' },
@@ -73,7 +74,19 @@ function StatItem({ stat, triggered }: { stat: typeof STATS[0]; triggered: boole
   )
 }
 
-function SquiggleDivider() {
+function SquiggleDivider({ horizontal = false }: { horizontal?: boolean }) {
+  if (horizontal) {
+    return (
+      <svg width="60" height="3" viewBox="0 0 60 3" fill="none" aria-hidden="true" style={{ flexShrink: 0, display: 'block', margin: '4px auto' }}>
+        <path
+          d="M0 1.5 C8 3, 16 0, 24 1.5 C32 3, 40 0, 48 1.5 C56 3, 60 0, 60 1.5"
+          stroke="rgba(253,250,244,0.3)"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    )
+  }
   return (
     <svg width="3" height="60" viewBox="0 0 3 60" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
       <path
@@ -86,12 +99,67 @@ function SquiggleDivider() {
   )
 }
 
+/** Tiny grid of 5-6 cells anchored to the bottom-left corner of the section.
+ *  Fades immediately outward via a linear gradient mask — grid lines dissolve into the background.
+ *  Purely decorative, pointer-events: none.
+ */
+function CornerDots({ side = 'left' }: { side?: 'left' | 'right' }) {
+  const size = 250
+  const grid = 5
+  const gap = 32
+  const center = Math.floor(grid / 2)
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 0,
+        [side]: 0, // this puts it on left or right automatically
+        width: size,
+        height: size,
+        pointerEvents: 'none',
+        zIndex: 1,
+        WebkitMaskImage:
+          side === 'left'
+            ? 'linear-gradient(to top right, black 25%, transparent 90%)'
+            : 'linear-gradient(to top left, black 25%, transparent 90%)',
+        maskImage:
+          side === 'left'
+            ? 'linear-gradient(to top right, black 25%, transparent 90%)'
+            : 'linear-gradient(to top left, black 25%, transparent 90%)',
+      }}
+    >
+      <svg width={size} height={size}>
+        {Array.from({ length: grid }).map((_, r) =>
+          Array.from({ length: grid }).map((_, c) => {
+            const dist = Math.abs(r - center) + Math.abs(c - center)
+            const opacity = 0.45 - dist * 0.08
+
+            return (
+              <circle
+                key={`${r}-${c}`}
+                cx={c * gap + 20}
+                cy={r * gap + 20}
+                r={2}
+                fill={`rgba(78,205,196,${Math.max(opacity, 0.08)})`}
+              />
+            )
+          })
+        )}
+      </svg>
+    </div>
+  )
+}
+
 export default function StatsBar() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-100px' })
+  const isMobile = useIsMobile()
 
   return (
     <section ref={ref} style={{ position: 'relative', backgroundColor: '#1A1A2E' }}>
+      {!isMobile && <CornerDots side="left" />}
+      {!isMobile && <CornerDots side="right" />}
       <WaveTop fill="#1A1A2E" />
 
       <div
@@ -108,8 +176,9 @@ export default function StatsBar() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 'clamp(16px, 3vw, 40px)',
-            flexWrap: 'wrap',
+            gap: isMobile ? 0 : 'clamp(16px, 3vw, 40px)',
+            flexDirection: isMobile ? 'column' : 'row',
+            flexWrap: isMobile ? 'nowrap' : 'wrap',
             justifyContent: 'center',
             width: '100%',
             maxWidth: 900,
@@ -118,7 +187,7 @@ export default function StatsBar() {
           {STATS.map((stat, i) => (
             <React.Fragment key={stat.label}>
               <StatItem stat={stat} triggered={inView} />
-              {i < STATS.length - 1 && <SquiggleDivider />}
+              {i < STATS.length - 1 && <SquiggleDivider horizontal={isMobile} />}
             </React.Fragment>
           ))}
         </div>
@@ -138,6 +207,7 @@ export default function StatsBar() {
       </div>
 
       <WaveBottom fill="#1A1A2E" />
+      
     </section>
   )
 }

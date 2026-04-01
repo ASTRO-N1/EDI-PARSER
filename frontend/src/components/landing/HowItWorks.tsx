@@ -1,5 +1,6 @@
 import { useRef, Fragment } from 'react'
 import { motion, useInView } from 'framer-motion'
+import { useIsMobile } from '../../hooks/useWindowWidth'
 
 function UploadIcon() {
   return (
@@ -193,6 +194,7 @@ const STEPS = [
 export default function HowItWorks() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-100px' })
+  const isMobile = useIsMobile()
 
   return (
     <section
@@ -229,71 +231,46 @@ export default function HowItWorks() {
       {/* Steps area — position:relative so figures can be absolute here */}
       <div style={{ position: 'relative', maxWidth: 1000, margin: '0 auto' }}>
 
-        {/* ── Figure 1 (coral) — left of column 1, at icon/title level ── */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={inView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          style={{
-            position: 'absolute',
-            left: -22,
-            top: 110,
-            transform: 'rotate(-8deg)',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
-        >
-          <motion.div
-            animate={{ y: [0, -5, 0] }}
-            transition={{ duration: 2, ease: 'easeInOut', repeat: Infinity }}
-          >
-            <Figure1 />
-          </motion.div>
-        </motion.div>
+        {/* Stick figures — desktop only (absolute-positioned, overlap stacked cards on mobile) */}
+        {!isMobile && (
+          <>
+            {/* ── Figure 1 (coral) */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={inView ? { opacity: 1, x: 0 } : {}}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              style={{ position: 'absolute', left: -22, top: 110, transform: 'rotate(-8deg)', pointerEvents: 'none', zIndex: 2 }}
+            >
+              <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 2, ease: 'easeInOut', repeat: Infinity }}>
+                <Figure1 />
+              </motion.div>
+            </motion.div>
 
-        {/* ── Figure 2 (teal) — right of column 2, at icon/title level ── */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={inView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          style={{
-            position: 'absolute',
-            left: 'calc(50% + 80px)',
-            top: 90,
-            transform: 'rotate(6deg)',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
-        >
-          <motion.div
-            animate={{ y: [0, -4, 0] }}
-            transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity, delay: 0.4 }}
-          >
-            <Figure2 />
-          </motion.div>
-        </motion.div>
+            {/* ── Figure 2 (teal) */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={inView ? { opacity: 1, x: 0 } : {}}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              style={{ position: 'absolute', left: 'calc(50% + 80px)', top: 90, transform: 'rotate(6deg)', pointerEvents: 'none', zIndex: 2 }}
+            >
+              <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity, delay: 0.4 }}>
+                <Figure2 />
+              </motion.div>
+            </motion.div>
 
-        {/* ── Figure 3 (gold) — lower-right of column 3, below description ── */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={inView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.7 }}
-          style={{
-            position: 'absolute',
-            right: -28,
-            top: 240,
-            transform: 'rotate(-5deg)',
-            pointerEvents: 'none',
-            zIndex: 2,
-          }}
-        >
-          <motion.div
-            animate={{ y: [0, -7, 0] }}
-            transition={{ duration: 1.8, ease: 'easeInOut', repeat: Infinity, delay: 0.8 }}
-          >
-            <Figure3 />
-          </motion.div>
-        </motion.div>
+            {/* ── Figure 3 (gold) */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={inView ? { opacity: 1, x: 0 } : {}}
+              transition={{ duration: 0.5, delay: 0.7 }}
+              style={{ position: 'absolute', right: -28, top: 240, transform: 'rotate(-5deg)', pointerEvents: 'none', zIndex: 2 }}
+            >
+              <motion.div animate={{ y: [0, -7, 0] }} transition={{ duration: 1.8, ease: 'easeInOut', repeat: Infinity, delay: 0.8 }}>
+                <Figure3 />
+              </motion.div>
+            </motion.div>
+          </>
+        )}
 
         {/* Steps flex row */}
         <div
@@ -312,17 +289,30 @@ export default function HowItWorks() {
                 animate={inView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.5, delay: i * 0.2 + 0.3 }}
                 style={{
-                  flex: '1 1 260px',
-                  maxWidth: 300,
+                  flex: '0 0 auto',               // stop flex from squeezing the cards
+                  maxWidth: isMobile ? '100%' : 300,
+                  width: isMobile ? '100%' : 300,
                   position: 'relative',
                   textAlign: 'center',
-                  padding: '0 16px',
+                  padding: isMobile ? '0 24px' : '0 16px',
+                  margin: isMobile ? '0 0 48px 0' : '0 40px'
                 }}
               >
                 {/* Big background number */}
                 <div
                   className="step-number"
-                  style={{ position: 'relative', color: '#FF6B6B', opacity: 0.08, fontSize: 120, fontFamily: 'Nunito, sans-serif', fontWeight: 900, lineHeight: 1, userSelect: 'none', pointerEvents: 'none', marginBottom: -30 }}
+                  style={{
+                    position: 'relative',
+                    color: '#FF6B6B',
+                    opacity: 0.08,
+                    fontSize: isMobile ? 80 : 120,
+                    fontFamily: 'Nunito, sans-serif',
+                    fontWeight: 900,
+                    lineHeight: 1,
+                    userSelect: 'none',
+                    pointerEvents: 'none',
+                    marginBottom: isMobile ? 12 : -30,
+                  }}
                 >
                   {step.number}
                 </div>
@@ -359,9 +349,19 @@ export default function HowItWorks() {
                 </p>
               </motion.div>
 
-              {/* Curved arrow between steps */}
-              {i < STEPS.length - 1 && (
+              {/* Curved arrow between steps — desktop only */}
+              {i < STEPS.length - 1 && !isMobile && (
                 <AnimatedArrow delay={i * 0.4 + 0.5} />
+              )}
+              {/* Vertical dot divider on mobile between stacked steps */}
+              {i < STEPS.length - 1 && isMobile && (
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0' }}>
+                  <svg width="8" height="32" viewBox="0 0 8 32" fill="none" aria-hidden="true">
+                    <circle cx="4" cy="6" r="2.5" fill="#4ECDC4" opacity="0.5" />
+                    <circle cx="4" cy="16" r="2.5" fill="#4ECDC4" opacity="0.35" />
+                    <circle cx="4" cy="26" r="2.5" fill="#4ECDC4" opacity="0.2" />
+                  </svg>
+                </div>
               )}
             </Fragment>
           ))}
