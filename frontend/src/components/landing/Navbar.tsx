@@ -39,13 +39,18 @@ export default function Navbar() {
         left: 0,
         right: 0,
         zIndex: 100,
-        padding: '24px 52px',
+        padding: scrolled ? '14px 52px' : '24px 52px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: scrolled ? '#FDFAF4' : 'transparent',
-        borderBottom: scrolled ? '2px solid #1A1A2E' : '2px solid transparent',
-        transition: 'background 0.3s ease, border-color 0.3s ease',
+        background: scrolled
+          ? 'linear-gradient(to bottom, #EDE8DC, #F0EBE1)'
+          : 'transparent',
+        boxShadow: scrolled
+          ? '0 1px 0 rgba(26, 26, 46, 0.18), 0 2px 12px rgba(26, 26, 46, 0.10)'
+          : 'none',
+        transition:
+          'background 0.3s ease-in-out, box-shadow 0.3s ease-in-out, padding 0.3s ease-in-out',
       }}
     >
 
