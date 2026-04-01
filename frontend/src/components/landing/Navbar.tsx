@@ -44,7 +44,7 @@ export default function Navbar() {
         alignItems: 'center',
         justifyContent: 'space-between',
         background: scrolled
-          ? 'linear-gradient(to bottom, #EDE8DC, #F0EBE1)'
+          ? 'linear-gradient(to left, rgb(253, 250, 244), rgb(232, 220, 220))'
           : 'transparent',
         boxShadow: scrolled
           ? '0 1px 0 rgba(26, 26, 46, 0.18), 0 2px 12px rgba(26, 26, 46, 0.10)'
@@ -114,7 +114,7 @@ export default function Navbar() {
             borderRadius: 8,
             fontSize: 18,
             color: '#1A1A2E',
-            background: 'transparent',
+            background: '#ffffff',
             textDecoration: 'none',
           }}
         >
