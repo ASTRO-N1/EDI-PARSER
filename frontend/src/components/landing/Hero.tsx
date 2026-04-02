@@ -4,31 +4,31 @@ import UploadZone from './UploadZone'
 import HeroIllustration from './HeroIllustration'
 import { StarDoodle, SmallStar, DotCluster, ScribbleUnderline, SparkleIcon } from './DoodleElements'
 
-function X12Badge() {
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '8px 16px',
-        background: '#FFE66D',
-        border: '2px solid #1A1A2E',
-        borderRadius: 999,
-        boxShadow: '3px 3px 0px #1A1A2E',
-        fontFamily: 'Nunito, sans-serif',
-        fontWeight: 800,
-        fontSize: 14,
-        color: '#1A1A2E',
-        transform: 'rotate(-1deg)',
-        marginBottom: 19,
-        width: 'fit-content',
-      }}
-    >
-      🏥&nbsp; X12 837 · 835 · 834
-    </div>
-  )
-}
+// function X12Badge() {
+//   return (
+//     // <div
+//     //   style={{
+//     //     display: 'inline-flex',
+//     //     alignItems: 'center',
+//     //     gap: 8,
+//     //     padding: '8px 16px',
+//     //     background: '#FFE66D',
+//     //     border: '2px solid #1A1A2E',
+//     //     borderRadius: 999,
+//     //     boxShadow: '3px 3px 0px #1A1A2E',
+//     //     fontFamily: 'Nunito, sans-serif',
+//     //     fontWeight: 800,
+//     //     fontSize: 14,
+//     //     color: '#1A1A2E',
+//     //     transform: 'rotate(-1deg)',
+//     //     marginBottom: 19,
+//     //     width: 'fit-content',
+//     //   }}
+//     // >
+//     //   🏥&nbsp; X12 837 · 835 · 834
+//     // </div>
+//   )
+// }
 
 export default function Hero() {
   const ref = useRef<HTMLDivElement>(null)
@@ -86,7 +86,7 @@ export default function Hero() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <X12Badge />
+          {/* <X12Badge /> */}
         </motion.div>
 
         <motion.div
