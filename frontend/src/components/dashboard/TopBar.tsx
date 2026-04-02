@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import useAppStore from '../../store/useAppStore'
 import { useTheme } from '../../theme/ThemeContext'
+import { useIsMobile } from '../../hooks/useWindowWidth'
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard/overview': 'Overview',
@@ -12,11 +13,12 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/ai': 'AI Assistant',
 }
 
-export default function TopBar() {
+export default function TopBar({ onMenuClick, menuOpen }: { onMenuClick?: () => void; menuOpen?: boolean }) {
   const location = useLocation()
   const { parseResult, transactionType } = useAppStore()
   const { t } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
+  const isMobile = useIsMobile()
 
   const title = PAGE_TITLES[location.pathname] ?? 'Overview'
   const data = parseResult?.data as Record<string, unknown> | undefined
@@ -55,14 +57,37 @@ export default function TopBar() {
       }}
     >
 
-      <div>
-        <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 22, color: t.ink, lineHeight: 1.1 }}>
-          {title}
+      {/* Left side: mobile menu icon or page title */}
+      {isMobile ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={onMenuClick}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.ink }}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          >
+            <svg width="24" height="20" viewBox="0 0 24 20" fill="none">
+              {menuOpen ? (
+                <>
+                  <line x1="2" y1="2" x2="22" y2="18" strokeWidth="2.5" strokeLinecap="round" stroke={t.ink} />
+                  <line x1="22" y1="2" x2="2" y2="18" strokeWidth="2.5" strokeLinecap="round" stroke={t.ink} />
+                </>
+              ) : (
+                <>
+                  <line x1="1" y1="3"  x2="23" y2="2.5"  strokeWidth="2.5" strokeLinecap="round" stroke={t.ink} />
+                  <line x1="2" y1="10" x2="22" y2="10.5" strokeWidth="2.5" strokeLinecap="round" stroke={t.ink} />
+                  <line x1="3" y1="17" x2="23" y2="16.5" strokeWidth="2.5" strokeLinecap="round" stroke={t.ink} />
+                </>
+              )}
+            </svg>
+          </button>
+          <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 18, color: t.ink }}>EdiFix</span>
         </div>
-        <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 400, fontSize: 11, color: t.inkFaint, marginTop: 1 }}>
-          EdiFix / {title}
+      ) : (
+        <div>
+          <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 22, color: t.ink, lineHeight: 1.1 }}>{title}</div>
+          <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 400, fontSize: 11, color: t.inkFaint, marginTop: 1 }}>EdiFix / {title}</div>
         </div>
-      </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {parseResult !== null && (
