@@ -11,6 +11,25 @@ const SAMPLE_FILES = [
   { label: '835 Sample', type: '835' },
   { label: '834 Sample', type: '834' },
 ]
+
+// Allowed extensions — validated by name, not MIME type.
+// iOS Safari / Android Chrome don't reliably set MIME types for custom
+// extensions like .edi, so a MIME-based `accept` prop silently rejects
+// all files on mobile. Extension-based validation works on every platform.
+const ALLOWED_EXTENSIONS = ['.edi', '.txt', '.dat', '.x12', '.zip']
+
+function extensionValidator(file: File) {
+  const name = file.name.toLowerCase()
+  const isValid = ALLOWED_EXTENSIONS.some((ext) => name.endsWith(ext))
+  if (!isValid) {
+    return {
+      code: 'file-invalid-type',
+      message: 'Only EDI files are supported (.edi .txt .dat .x12 .zip)',
+    }
+  }
+  return null
+}
+
 export default function UploadZone() {
   const navigate = useNavigate()
   const setEdiFile = useAppStore((s) => s.setEdiFile)
@@ -23,22 +42,22 @@ export default function UploadZone() {
       setEdiFile(file)
       setFile(file)
       setTimeout(() => {
-        // Just navigate. Processing page will read `file` from Zustand.
         navigate('/processing')
       }, 300)
     },
     [setEdiFile, setFile, navigate]
   )
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (files) => files[0] && handleFile(files[0]),
-    accept: {
-      'text/plain': ['.edi', '.txt', '.dat', '.x12'],
-      'application/zip': ['.zip'],
-      'application/octet-stream': ['.edi', '.dat', '.x12'],
-    },
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
+    onDrop: (accepted) => accepted[0] && handleFile(accepted[0]),
+    // No MIME-based `accept` — iOS/Android don't reliably assign MIME types
+    // to custom extensions like .edi, causing silent rejections on mobile.
+    // We validate by file extension via `validator` instead.
+    validator: extensionValidator,
     multiple: false,
   })
+
+  const rejectionError = fileRejections[0]?.errors[0]?.message ?? null
 
   const handleSampleClick = async (type: string) => {
     setLoading(true)
@@ -58,24 +77,24 @@ export default function UploadZone() {
   return (
     <div style={{ width: '100%' }}>
       {/* Sitting stick figure above upload box */}
-      <div style={{ display: 'flex', justifyContent: 'end', marginBottom: -75, top: -58, left:-85, position: 'relative', zIndex: 2 }}>
+      <div style={{ display: 'flex', justifyContent: 'end', marginBottom: -75, top: -58, left: -85, position: 'relative', zIndex: 2 }}>
         <SittingStickFigure size={75} />
       </div>
 
       {/* Drop zone */}
       <div
         {...getRootProps()}
-        className={`upload-zone${isDragActive ? ' drag-over' : ''}`}
+        className={`upload-zone${isDragActive ? ' drag-over' : ''}${rejectionError ? ' upload-zone-error' : ''}`}
         style={{
           padding: '40px 32px',
           textAlign: 'center',
           cursor: 'pointer',
           position: 'relative',
-          borderColor: isDragActive ? '#4ECDC4' : '#4ECDC4',
+          borderColor: rejectionError ? '#FF6B6B' : '#4ECDC4',
           borderWidth: isDragActive ? 3 : 2.5,
           borderStyle: 'dashed',
           borderRadius: 16,
-          background: isDragActive ? '#F0FFF4' : '#FFFFFF',
+          background: isDragActive ? '#F0FFF4' : rejectionError ? '#FFF5F5' : '#FFFFFF',
           transform: isDragActive ? 'scale(1.02)' : 'scale(1)',
           transition: 'all 0.2s ease',
         }}
@@ -91,28 +110,38 @@ export default function UploadZone() {
           </div>
         ) : (
           <>
-            <UploadCloud size={48} color="#4ECDC4" style={{ margin: '0 auto 12px' }} />
+            <UploadCloud
+              size={48}
+              color={rejectionError ? '#FF6B6B' : '#4ECDC4'}
+              style={{ margin: '0 auto 12px' }}
+            />
             <p
               style={{
                 fontFamily: 'Nunito, sans-serif',
                 fontWeight: 600,
                 fontSize: 16,
-                color: '#1A1A2E',
+                color: rejectionError ? '#FF6B6B' : '#1A1A2E',
                 marginBottom: 6,
               }}
             >
-              {isDragActive ? 'Drop it here! 🎉' : 'Drag your EDI file here'}
+              {isDragActive ? 'Drop it here! 🎉' : 'Tap or drag your EDI file here'}
             </p>
-            <p
-              style={{
-                fontFamily: 'Nunito, sans-serif',
-                fontWeight: 400,
-                fontSize: 13,
-                color: 'rgba(26,26,46,0.5)',
-              }}
-            >
-              or click to browse · .edi .txt .dat .x12 .zip
-            </p>
+            {rejectionError ? (
+              <p style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: 13, color: '#FF6B6B' }}>
+                ⚠️ {rejectionError}
+              </p>
+            ) : (
+              <p
+                style={{
+                  fontFamily: 'Nunito, sans-serif',
+                  fontWeight: 400,
+                  fontSize: 13,
+                  color: 'rgba(26,26,46,0.5)',
+                }}
+              >
+                .edi · .txt · .dat · .x12 · .zip
+              </p>
+            )}
           </>
         )}
       </div>

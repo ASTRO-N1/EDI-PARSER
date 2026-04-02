@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import rough from 'roughjs'
 import useAppStore from '../../../store/useAppStore'
 import { useTheme } from '../../../theme/ThemeContext'
+import { useIsMobile } from '../../../hooks/useWindowWidth'
 
 interface SegmentShape {
   id: string
@@ -143,6 +144,7 @@ function SegmentGroup({ id, segments }: SegmentGroupProps) {
 export default function SegmentTree() {
   const { parseResult } = useAppStore()
   const { t, isDark } = useTheme()
+  const isMobile = useIsMobile()
   const roughRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -196,7 +198,8 @@ export default function SegmentTree() {
         padding: '24px',
         boxShadow: `4px 4px 0px ${t.shadow}`,
         position: 'relative',
-        height: 500,
+        height: isMobile ? 'auto' : 500,
+        maxHeight: isMobile ? 380 : undefined,
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',

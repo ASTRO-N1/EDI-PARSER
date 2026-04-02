@@ -77,7 +77,7 @@ export function ParseLog({
         </div>
         
         <div style={{ fontFamily: 'Nunito', fontWeight: 400, fontSize: '13px', color: '#1A1A2E', opacity: 0.7, marginTop: '8px' }}>
-          Make sure the backend is running:
+          The parser service couldn't be reached. This may be a temporary issue — please try again in a moment.
         </div>
         
         <div style={{ 
@@ -89,7 +89,7 @@ export function ParseLog({
           fontSize: '11px',
           color: '#FFE66D'
         }}>
-          cd backend && uvicorn app:app --reload --port 8000
+          Error: Could not connect to the parse engine
         </div>
         
         <button

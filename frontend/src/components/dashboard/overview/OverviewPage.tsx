@@ -8,9 +8,11 @@ import LoopSummary from './LoopSummary'
 import GuestUpsellCard from '../GuestUpsellCard'
 import useAppStore from '../../../store/useAppStore'
 import { useTheme } from '../../../theme/ThemeContext'
+import { useIsMobile } from '../../../hooks/useWindowWidth'
 
 export default function OverviewPage() {
   const { parseResult } = useAppStore()
+  const isMobile = useIsMobile()
   const { t, isDark } = useTheme()
   const validPanelRef = useRef<HTMLDivElement>(null)
   const validRoughRef = useRef<SVGSVGElement>(null)
@@ -78,8 +80,8 @@ export default function OverviewPage() {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(0, 1fr))',
-        gap: 16,
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gap: isMobile ? 10 : 16,
         marginBottom: 16,
       }}>
         <KPICard
@@ -122,7 +124,7 @@ export default function OverviewPage() {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(400px, 1fr) minmax(400px, 1.2fr)',
+        gridTemplateColumns: isMobile ? '1fr' : 'minmax(300px, 1fr) minmax(300px, 1.2fr)',
         gap: 16,
         marginBottom: 16,
         animation: 'fadeSlideUp 500ms ease-out 320ms both',
@@ -232,7 +234,7 @@ export default function OverviewPage() {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(400px, 1.6fr) minmax(300px, 1fr)',
+        gridTemplateColumns: isMobile ? '1fr' : 'minmax(300px, 1.6fr) minmax(240px, 1fr)',
         gap: 16,
         marginBottom: 32,
         animation: 'fadeSlideUp 600ms ease-out 400ms both',
