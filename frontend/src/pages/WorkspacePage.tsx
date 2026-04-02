@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import WorkspaceTopNav from '../components/workspace/WorkspaceTopNav'
 import { supabase } from '../lib/supabase'
 import useAppStore from '../store/useAppStore'
 import { useIsMobile } from '../hooks/useWindowWidth'
@@ -86,6 +87,7 @@ function SidebarContent({ onClose, handleLogout }: {
 
 export default function WorkspacePage() {
   const { session, authLoading } = useAppStore()
+  const navigate = useNavigate()
   const isMobile = useIsMobile()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
