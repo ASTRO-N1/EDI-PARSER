@@ -2,6 +2,9 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 
+// ── API URL helper ─────────────────────────────────────────────────────────────
+const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://edi-parser-production.up.railway.app'
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface ValidationError {
@@ -65,12 +68,13 @@ interface FieldProps {
   errors?: ValidationError[]
   isActive?: boolean
   mono?: boolean
-  hint?: string
+  hint?: string        // kept for call-site compatibility; no longer shown as placeholder
   onAskAI?: () => void
   inputRef?: React.RefObject<HTMLInputElement | null>
 }
 
-function FormField({ id, label, value, onChange, errors = [], isActive, mono, hint, onAskAI, inputRef }: FieldProps) {
+// hint is accepted but intentionally not rendered as a placeholder (Fix 2)
+function FormField({ id, label, value, onChange, errors = [], isActive, mono, onAskAI, inputRef }: FieldProps) {
   const hasError = errors.length > 0
   const errorMsg = errors[0]?.message ?? errors[0]?.msg ?? ''
 
@@ -148,7 +152,7 @@ function FormField({ id, label, value, onChange, errors = [], isActive, mono, hi
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={hint ?? `Enter ${label.toLowerCase()}…`}
+        placeholder=""
         style={{
           width: '100%',
           padding: '9px 13px',
@@ -389,36 +393,41 @@ function resolveSection(path: string | null): string | null {
 // ── Main FormEditorView ────────────────────────────────────────────────────────
 
 export default function FormEditorView() {
-  const parseResult = useAppStore((s) => s.parseResult)
-  const setParseResult = useAppStore((s) => s.setParseResult)
-  const selectedPath = useAppStore((s) => s.selectedPath)
-  const setIsAIPanelOpen = useAppStore((s) => s.setIsAIPanelOpen)
-  const setAiPromptContext = useAppStore((s) => s.setAiPromptContext)
+  const parseResult        = useAppStore((s) => s.parseResult)
+  const setParseResult     = useAppStore((s) => s.setParseResult)
+  const selectedPath       = useAppStore((s) => s.selectedPath)
+  const setIsAIPanelOpen   = useAppStore((s) => s.setIsAIPanelOpen)
+  const setAiPromptContext  = useAppStore((s) => s.setAiPromptContext)
+  const focusFieldId       = useAppStore((s) => s.focusFieldId)
+  const setFocusFieldId    = useAppStore((s) => s.setFocusFieldId)
+  const isSubmitting       = useAppStore((s) => s.isSubmitting)
+  const setIsSubmitting    = useAppStore((s) => s.setIsSubmitting)
+  const rawFile            = useAppStore((s) => s.file)
+
+  const [submitSuccess, setSubmitSuccess] = useState(false)
 
   // Section refs for scrollIntoView
   const sectionRefs = useRef<Record<string, React.RefObject<HTMLDivElement | null>>>({
     submitter: { current: null },
-    billing: { current: null },
-    subscriber: { current: null },
-    claim: { current: null },
-    service: { current: null },
+    billing:   { current: null },
+    subscriber:{ current: null },
+    claim:     { current: null },
+    service:   { current: null },
   })
 
   const [highlightedSection, setHighlightedSection] = useState<string | null>(null)
-  const [activeFieldPath, setActiveFieldPath] = useState<string | null>(null)
+  const [activeFieldPath, setActiveFieldPath]       = useState<string | null>(null)
 
-  // Inbound sync: selectedPath → scroll + highlight
+  // ── Inbound sync: selectedPath → scroll form section + highlight ──────────
   useEffect(() => {
     if (!selectedPath) return
     const section = resolveSection(selectedPath)
     if (!section) return
-
     const ref = sectionRefs.current[section]
     if (ref?.current) {
       ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
       setHighlightedSection(section)
       setActiveFieldPath(selectedPath)
-
       const timer = setTimeout(() => {
         setHighlightedSection(null)
         setActiveFieldPath(null)
@@ -426,6 +435,44 @@ export default function FormEditorView() {
       return () => clearTimeout(timer)
     }
   }, [selectedPath])
+
+  // ── Fix 6b: focusFieldId → scroll to input + focus it ────────────────────
+  useEffect(() => {
+    if (!focusFieldId) return
+    const timer = setTimeout(() => {
+      const el = document.getElementById(focusFieldId) as HTMLInputElement | null
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+      el.focus()
+      setFocusFieldId(null)
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [focusFieldId, setFocusFieldId])
+
+  // ── Fix 3b: Commit Changes — re-POST raw file to /api/v1/parse ───────────
+  const handleCommit = useCallback(async () => {
+    if (!rawFile || isSubmitting) return
+    setIsSubmitting(true)
+    setSubmitSuccess(false)
+    try {
+      const formData = new FormData()
+      formData.append('file', rawFile)
+      const res = await fetch(`${API_URL}/api/v1/parse`, {
+        method: 'POST',
+        headers: { 'X-Internal-Bypass': 'frontend-ui-secret' },
+        body: formData,
+      })
+      if (!res.ok) throw new Error('Re-parse failed')
+      const result = await res.json()
+      setParseResult(result)
+      setSubmitSuccess(true)
+      setTimeout(() => setSubmitSuccess(false), 2500)
+    } catch (err) {
+      console.error('[Commit]', err)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }, [rawFile, isSubmitting, setIsSubmitting, setParseResult])
 
   // Outbound edit helper — deep-set a value in parseResult
   const handleFieldChange = useCallback(
@@ -1052,6 +1099,95 @@ export default function FormEditorView() {
             </div>
           </motion.div>
 
+        </div>
+
+        {/* ── Sticky Commit Bar ─────────────────────────────────────────── */}
+        <div
+          style={{
+            position: 'sticky',
+            bottom: -50,
+            zIndex: 20,
+            padding: '14px 28px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+          }}
+        >
+          <button
+            id="commit-changes-btn"
+            onClick={handleCommit}
+            disabled={!rawFile || isSubmitting}
+            title={!rawFile ? 'No raw file available — commit is disabled for sample or direct loads' : 'Re-validate and save changes'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 22px',
+              background: (!rawFile || isSubmitting) ? 'rgba(26,26,46,0.08)' : submitSuccess ? '#4ECDC4' : '#1A1A2E',
+              color: (!rawFile || isSubmitting) ? 'rgba(26,26,46,0.35)' : '#FDFAF4',
+              border: '2px solid rgba(26,26,46,0.2)',
+              borderRadius: '255px 15px 225px 15px / 15px 225px 15px 255px',
+              boxShadow: (!rawFile || isSubmitting) ? 'none' : submitSuccess ? '3px 3px 0px rgba(78,205,196,0.4)' : '3px 3px 0px #1A1A2E',
+              cursor: (!rawFile || isSubmitting) ? 'not-allowed' : 'pointer',
+              fontFamily: 'Nunito, sans-serif',
+              fontWeight: 800,
+              fontSize: 13,
+              transition: 'all 0.2s ease',
+              opacity: (!rawFile || isSubmitting) ? 0.6 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (rawFile && !isSubmitting) {
+                e.currentTarget.style.transform = 'translateY(-1px)'
+                e.currentTarget.style.boxShadow = '5px 5px 0px #1A1A2E'
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = (!rawFile || isSubmitting) ? 'none' : '3px 3px 0px #1A1A2E'
+            }}
+          >
+            {isSubmitting ? (
+              <>
+                <div className="doodle-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                Saving…
+              </>
+            ) : submitSuccess ? (
+              <>
+                ✅ Saved!
+              </>
+            ) : (
+              <>
+                🔄 Commit Changes
+              </>
+            )}
+          </button>
+
+          {!rawFile && (
+            <span style={{
+              fontFamily: 'Nunito, sans-serif',
+              fontSize: 11,
+              color: 'rgba(26,26,46,0.4)',
+              fontStyle: 'italic',
+            }}>
+              Commit is disabled — sample file or no raw file in session
+            </span>
+          )}
+
+          {submitSuccess && (
+            <motion.span
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0 }}
+              style={{
+                fontFamily: 'Nunito, sans-serif',
+                fontSize: 12,
+                color: '#4ECDC4',
+                fontWeight: 700,
+              }}
+            >
+              Re-validation complete ✓
+            </motion.span>
+          )}
         </div>
       </div>
     </>

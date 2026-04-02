@@ -71,6 +71,14 @@ interface AppState {
   selectedPath: string | null
   setSelectedPath: (path: string | null) => void
 
+  // Form field focus sync (from ValidationDrawer error clicks)
+  focusFieldId: string | null
+  setFocusFieldId: (id: string | null) => void
+
+  // Commit / re-validate state
+  isSubmitting: boolean
+  setIsSubmitting: (v: boolean) => void
+
   // AI prompt pre-fill (from "Ask AI to Fix" buttons)
   aiPromptContext: string | null
   setAiPromptContext: (ctx: string | null) => void
@@ -159,6 +167,12 @@ const useAppStore = create<AppState>((set, get) => ({
 
   selectedPath: null,
   setSelectedPath: (path) => set({ selectedPath: path }),
+
+  focusFieldId: null,
+  setFocusFieldId: (id) => set({ focusFieldId: id }),
+
+  isSubmitting: false,
+  setIsSubmitting: (v) => set({ isSubmitting: v }),
 
   aiPromptContext: null,
   setAiPromptContext: (ctx) => set({ aiPromptContext: ctx }),

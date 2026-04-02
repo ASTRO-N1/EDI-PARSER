@@ -1,16 +1,136 @@
 import useAppStore from '../../store/useAppStore'
 
-const PLACEHOLDER_ERRORS = [
-  { id: 1, type: 'error', code: 'InvalidNPI', element: 'NM109', loop: '2000A', msg: 'Billing Provider NPI is missing or invalid format (must be 10 digits).' },
-  { id: 2, type: 'warning', code: 'AmountMismatch', element: 'CLM02', loop: '2300', msg: 'Total claim charge amount does not equal sum of service lines (SV102).' },
+// ── Error → EDI path + form field mapping ─────────────────────────────────────
+
+interface NormalisedError {
+  id: number | string
+  type: 'error' | 'warning'
+  code: string
+  element: string
+  loop: string
+  msg: string
+}
+
+// Maps a normalised error to the selectedPath that drives explorer tree scroll
+function resolveTreePath(err: NormalisedError): string {
+  const el   = (err.element ?? '').toUpperCase()
+  const loop = (err.loop ?? '').toUpperCase()
+
+  if (loop.includes('2010AA') || (loop.includes('2000A') && el.includes('NM1')))
+    return 'loop_2010AA.NM1'
+  if (loop.includes('2010BA') || loop.includes('2000B') && el === 'NM109')
+    return 'loop_2010BA.NM1'
+  if (loop.includes('1000A')) return 'loop_1000A.NM1'
+  if (loop.includes('1000B')) return 'loop_1000B.NM1'
+  if (loop.includes('2300') && (el === 'CLM02' || err.code.toLowerCase().includes('amount')))
+    return 'loop_2300.CLM'
+  if (loop.includes('2300') && el.startsWith('HI'))
+    return 'loop_2300.HI'
+  if (loop.includes('2300') && el.startsWith('DTP'))
+    return 'loop_2300.DTP'
+  if (loop.includes('2300')) return 'loop_2300'
+  if (loop.includes('2400') && el.startsWith('SV'))
+    return 'loop_2400[0].SV1'
+  if (loop.includes('2400')) return 'loop_2400[0]'
+
+  // Fallback: try to infer from element name alone
+  if (el.startsWith('NM1') && el === 'NM109') return 'loop_2010AA.NM1'
+  if (el === 'CLM02') return 'loop_2300.CLM'
+  return 'loop_2300'
+}
+
+// Maps a normalised error to the DOM id of the form <input> to focus
+function resolveFormField(err: NormalisedError): string {
+  const el   = (err.element ?? '').toUpperCase()
+  const loop = (err.loop ?? '').toUpperCase()
+  const code = (err.code ?? '').toLowerCase()
+
+  if (code.includes('npi') || (el === 'NM109' && (loop.includes('2010AA') || loop.includes('2000A'))))
+    return 'billing-npi'
+  if (el === 'NM109' && (loop.includes('2010BA') || loop.includes('2000B')))
+    return 'sub-member-id'
+  if (el === 'NM103' && loop.includes('1000A')) return 'submitter-name'
+  if (el === 'NM103' && loop.includes('1000B')) return 'receiver-name'
+  if (el === 'CLM02' || code.includes('amount')) return 'clm-amount'
+  if (el === 'CLM01') return 'clm-id'
+  if (el.startsWith('HI')) return 'dx-code-1'
+  if (el === 'SV101') return 'svc-0-proc'
+  if (el === 'SV102') return 'svc-0-amount'
+  if (el === 'DTP03' && loop.includes('2300')) return 'clm-service-date'
+  if (el === 'DTP03' && loop.includes('2400')) return 'svc-0-date'
+  if (el === 'N301') return 'billing-address'
+  if (el === 'N401') return 'billing-city'
+  if (el === 'N402') return 'billing-state'
+  if (el === 'N403') return 'billing-zip'
+  if (el === 'DMG02') return 'sub-dob'
+  if (el === 'DMG03') return 'sub-gender'
+  return 'clm-id'   // safe fallback
+}
+
+// Normalise errors coming from the backend (multiple possible key shapes)
+function normaliseErrors(raw: unknown[]): NormalisedError[] {
+  return raw.map((e: any, i) => ({
+    id:      e.id ?? i,
+    type:    e.type === 'warning' ? 'warning' : 'error',
+    code:    e.code ?? e.error_code ?? 'ValidationError',
+    element: e.element ?? e.field ?? e.segment ?? '',
+    loop:    e.loop ?? e.loop_id ?? e.location ?? '',
+    msg:     e.message ?? e.msg ?? e.description ?? 'Validation error.',
+  }))
+}
+
+// Fallback placeholder errors used when no file is loaded or no errors returned
+const PLACEHOLDER_ERRORS: NormalisedError[] = [
+  {
+    id: 1,
+    type: 'error',
+    code: 'InvalidNPI',
+    element: 'NM109',
+    loop: '2010AA',
+    msg: 'Billing Provider NPI is missing or invalid format (must be 10 digits).',
+  },
+  {
+    id: 2,
+    type: 'warning',
+    code: 'AmountMismatch',
+    element: 'CLM02',
+    loop: '2300',
+    msg: 'Total claim charge amount does not equal sum of service lines (SV102).',
+  },
 ]
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function ValidationDrawer() {
-  const parseResult = useAppStore((s) => s.parseResult)
-  const ediFile = useAppStore((s) => s.ediFile)
+  const parseResult            = useAppStore((s) => s.parseResult)
+  const ediFile                = useAppStore((s) => s.ediFile)
   const isValidationDrawerOpen = useAppStore((s) => s.isValidationDrawerOpen)
+  const toggleValidation       = useAppStore((s) => s.toggleValidationDrawer)
+  const setSelectedPath        = useAppStore((s) => s.setSelectedPath)
+  const setFocusFieldId        = useAppStore((s) => s.setFocusFieldId)
+  const setActiveTabId         = useAppStore((s) => s.setActiveTabId)
+
   const hasFile = !!(parseResult || ediFile.fileName)
-  const toggleValidation = useAppStore(s => s.toggleValidationDrawer)
+
+  // Use real errors when available, otherwise placeholders
+  const errors: NormalisedError[] = (() => {
+    if (!parseResult) return PLACEHOLDER_ERRORS
+    const data = parseResult as Record<string, unknown>
+    const raw  = (data.validation_errors ?? data.errors ?? []) as unknown[]
+    if (raw.length === 0) return PLACEHOLDER_ERRORS
+    return normaliseErrors(raw)
+  })()
+
+  const errorCount   = errors.filter((e) => e.type === 'error').length
+  const warningCount = errors.filter((e) => e.type === 'warning').length
+
+  const handleErrorClick = (err: NormalisedError) => {
+    const treePath  = resolveTreePath(err)
+    const fieldId   = resolveFormField(err)
+    setSelectedPath(treePath)
+    setFocusFieldId(fieldId)
+    setActiveTabId('form')
+  }
 
   return (
     <div style={{
@@ -18,7 +138,7 @@ export default function ValidationDrawer() {
       display: 'flex',
       flexDirection: 'column',
       background: '#FDFAF4',
-      overflow: 'hidden'
+      overflow: 'hidden',
     }}>
       {/* Drawer Header */}
       <div style={{
@@ -34,9 +154,31 @@ export default function ValidationDrawer() {
           <line x1="8" y1="6" x2="8" y2="10" stroke="#1A1A2E" strokeWidth="2" strokeLinecap="round" />
           <circle cx="8" cy="12.5" r="1" fill="#1A1A2E" />
         </svg>
-        <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 12, color: '#1A1A2E', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        <span style={{
+          fontFamily: 'Nunito, sans-serif',
+          fontWeight: 800,
+          fontSize: 12,
+          color: '#1A1A2E',
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+        }}>
           Validation Problems
         </span>
+
+        {/* Click-to-navigate hint */}
+        {hasFile && (
+          <span style={{
+            marginLeft: 10,
+            fontFamily: 'Nunito, sans-serif',
+            fontSize: 10,
+            color: 'rgba(26,26,46,0.55)',
+            fontStyle: 'italic',
+            fontWeight: 600,
+          }}>
+            · click any error to navigate
+          </span>
+        )}
+
         <div style={{ flex: 1 }} />
         <button
           onClick={toggleValidation}
@@ -49,7 +191,7 @@ export default function ValidationDrawer() {
             justifyContent: 'center',
             padding: 4,
             transition: 'transform 0.3s ease',
-            transform: isValidationDrawerOpen ? 'rotate(0deg)' : 'rotate(180deg)'
+            transform: isValidationDrawerOpen ? 'rotate(0deg)' : 'rotate(180deg)',
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -58,7 +200,7 @@ export default function ValidationDrawer() {
         </button>
       </div>
 
-      {/* Drawer Body (Scrollable) */}
+      {/* Drawer Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} className="custom-scrollbar">
         {!hasFile ? (
           <div style={{
@@ -69,15 +211,16 @@ export default function ValidationDrawer() {
             fontFamily: 'Nunito, sans-serif',
             fontSize: 12,
             color: 'rgba(26,26,46,0.3)',
-            fontStyle: 'italic'
+            fontStyle: 'italic',
           }}>
             No validation data. Upload a file to see errors.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {PLACEHOLDER_ERRORS.map((err) => (
-              <div
+            {errors.map((err) => (
+              <button
                 key={err.id}
+                onClick={() => handleErrorClick(err)}
                 style={{
                   display: 'flex',
                   alignItems: 'baseline',
@@ -88,23 +231,42 @@ export default function ValidationDrawer() {
                   borderRadius: 6,
                   boxShadow: '1px 1px 0px rgba(26,26,46,0.05)',
                   cursor: 'pointer',
-                  transition: 'background 0.1s',
+                  transition: 'background 0.1s, box-shadow 0.1s, transform 0.1s',
+                  width: '100%',
+                  textAlign: 'left',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(78,205,196,0.05)'}
-                onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(78,205,196,0.07)'
+                  e.currentTarget.style.boxShadow = '2px 2px 0px rgba(78,205,196,0.3)'
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#FFFFFF'
+                  e.currentTarget.style.boxShadow = '1px 1px 0px rgba(26,26,46,0.05)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                }}
               >
-                {/* Indicator icon */}
+                {/* Severity icon */}
                 <span style={{ fontSize: 13, flexShrink: 0 }}>
                   {err.type === 'error' ? '🔴' : '🟡'}
                 </span>
 
-                {/* Error location/code */}
-                <div style={{ minWidth: 100, flexShrink: 0 }}>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 700, color: '#1A1A2E' }}>
+                {/* Error code + location */}
+                <div style={{ minWidth: 110, flexShrink: 0 }}>
+                  <div style={{
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#1A1A2E',
+                  }}>
                     {err.code}
                   </div>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: 'rgba(26,26,46,0.45)' }}>
-                    Loop {err.loop} · {err.element}
+                  <div style={{
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: 10,
+                    color: 'rgba(26,26,46,0.45)',
+                  }}>
+                    {err.loop ? `Loop ${err.loop}` : '—'} · {err.element || '—'}
                   </div>
                 </div>
 
@@ -114,49 +276,24 @@ export default function ValidationDrawer() {
                   fontFamily: 'Nunito, sans-serif',
                   fontSize: 13,
                   color: 'rgba(26,26,46,0.7)',
-                  lineHeight: 1.4
+                  lineHeight: 1.4,
                 }}>
                   {err.msg}
                 </div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0, opacity: 0.8 }}>
-                  <button style={{
-                    padding: '4px 10px',
-                    background: '#FFE66D',
-                    border: '1.5px solid #1A1A2E',
-                    borderRadius: 6,
-                    fontFamily: 'Nunito, sans-serif',
-                    fontWeight: 800,
-                    fontSize: 11,
-                    color: '#1A1A2E',
-                    cursor: 'pointer',
-                    boxShadow: '1px 1px 0px #1A1A2E',
-                  }}>
-                    Explain
-                  </button>
-                  <button style={{
-                    padding: '4px 10px',
-                    background: '#4ECDC4',
-                    border: '1.5px solid #1A1A2E',
-                    borderRadius: 6,
-                    fontFamily: 'Nunito, sans-serif',
-                    fontWeight: 800,
-                    fontSize: 11,
-                    color: '#1A1A2E',
-                    cursor: 'pointer',
-                    boxShadow: '1px 1px 0px #1A1A2E',
-                  }}>
-                    Ask AI
-                  </button>
+                {/* Navigate hint icon */}
+                <div style={{ flexShrink: 0, opacity: 0.35 }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6h8M6 2l4 4-4 4" stroke="#1A1A2E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Drawer Footer Status */}
+      {/* Footer status bar */}
       <div style={{
         padding: '4px 16px',
         background: '#FFFFFF',
@@ -165,12 +302,12 @@ export default function ValidationDrawer() {
         fontSize: 10,
         color: 'rgba(26,26,46,0.5)',
         display: 'flex',
-        gap: 16
+        gap: 16,
       }}>
         {hasFile && (
           <>
-            <span>🔴 1 Error</span>
-            <span>🟡 1 Warning</span>
+            <span>🔴 {errorCount} Error{errorCount !== 1 ? 's' : ''}</span>
+            <span>🟡 {warningCount} Warning{warningCount !== 1 ? 's' : ''}</span>
           </>
         )}
       </div>

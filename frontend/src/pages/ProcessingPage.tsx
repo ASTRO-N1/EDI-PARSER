@@ -146,7 +146,7 @@ export default function ProcessingPage() {
             isLoading={isLoading}
             hasError={hasError}
             onRetry={parseFile}
-            onComplete={() => navigate('/dashboard')}
+            onComplete={() => navigate('/workspace')}
             transactionType={transactionType}
           />
         </div>
