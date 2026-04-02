@@ -3,14 +3,26 @@ import useAppStore from '../../store/useAppStore'
 
 export default function AIPanel() {
   const [messages, setMessages] = useState([
-    { id: '1', role: 'assistant', text: 'Hi! I am your AI Co-Pilot. Click on any error or segment in your file and I can explain it.' },
+    { id: '1', role: 'assistant', text: 'Hi! I’m your AI Co-Pilot. Click on any error or segment in your file and I can explain it, or use “Ask AI to Fix” on any field.' },
     { id: '2', role: 'user', text: 'What is Loop 2000A?' },
     { id: '3', role: 'assistant', text: 'Loop 2000A represents the Billing Provider. It holds details like the National Provider Identifier (NPI), Address, and Tax ID. If this loop is malformed, the entire claim will be rejected by the clearinghouse.' },
   ])
   const [input, setInput] = useState('')
   const setIsAIPanelOpen = useAppStore(s => s.setIsAIPanelOpen)
+  const aiPromptContext = useAppStore(s => s.aiPromptContext)
+  const setAiPromptContext = useAppStore(s => s.setAiPromptContext)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const msgsEndRef = useRef<HTMLDivElement>(null)
+
+  // When a form field's "Ask AI to Fix" triggers a context, pre-fill the input
+  useEffect(() => {
+    if (aiPromptContext) {
+      setInput(aiPromptContext)
+      setAiPromptContext(null)
+      setTimeout(() => inputRef.current?.focus(), 100)
+    }
+  }, [aiPromptContext, setAiPromptContext])
 
   useEffect(() => {
     msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -123,6 +135,7 @@ export default function AIPanel() {
           }}
         >
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}

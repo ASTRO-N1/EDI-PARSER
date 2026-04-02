@@ -5,6 +5,7 @@ import { UploadCloud } from 'lucide-react'
 import { motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 import CenterTabBar from './CenterTabBar'
+import FormEditorView from './FormEditorView'
 
 // ── Skeleton placeholder helpers ─────────────────────────────────────────────
 function SkeletonLine({ width = '100%', height = 14 }: { width?: string | number; height?: number }) {
@@ -20,60 +21,7 @@ function SkeletonLine({ width = '100%', height = 14 }: { width?: string | number
 }
 
 // ── Tab content placeholders ─────────────────────────────────────────────────
-function FormViewContent() {
-  const fields = [
-    { label: 'Billing Provider NPI', width: '80%', hasError: true },
-    { label: 'Claim Amount', width: '50%', hasError: false },
-    { label: 'Diagnosis Code (ICD-10)', width: '65%', hasError: false },
-    { label: 'Rendering Provider Name', width: '75%', hasError: false },
-    { label: 'Service Dates', width: '55%', hasError: false },
-  ]
-  return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: 12, color: 'rgba(26,26,46,0.4)', fontStyle: 'italic', marginBottom: 4 }}>
-        Form View — Biller-friendly field editor. Upload a file to see real data.
-      </p>
-      {fields.map((f, i) => (
-        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 12, color: 'rgba(26,26,46,0.55)' }}>
-              {f.label}
-            </span>
-            {f.hasError && (
-              <span style={{
-                fontFamily: 'Nunito, sans-serif',
-                fontSize: 10,
-                fontWeight: 800,
-                color: '#FF6B6B',
-                background: 'rgba(255,107,107,0.1)',
-                border: '1.5px solid #FF6B6B',
-                borderRadius: 4,
-                padding: '1px 6px',
-              }}>⚠ Error</span>
-            )}
-          </div>
-          <div style={{
-            width: '100%',
-            height: 36,
-            background: f.hasError ? 'rgba(255,107,107,0.05)' : '#FFFFFF',
-            border: f.hasError ? '2px solid #FF6B6B' : '2px solid rgba(26,26,46,0.15)',
-            borderRadius: 8,
-            boxShadow: f.hasError ? '3px 3px 0px rgba(255,107,107,0.3)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 12px',
-          }}>
-            {f.hasError ? (
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#FF6B6B', opacity: 0.7 }}>INVALID_FORMAT</span>
-            ) : (
-              <SkeletonLine width={f.width} height={10} />
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
+// FormViewContent replaced by <FormEditorView /> which reads live parseResult
 
 function RawEDIContent() {
   const lines = [
@@ -235,7 +183,7 @@ export default function EditorArea() {
           <EmptyDropzone />
         ) : (
           <>
-            {activeTabId === 'form' && <FormViewContent />}
+            {activeTabId === 'form' && <FormEditorView />}
             {activeTabId === 'raw' && <RawEDIContent />}
             {activeTabId === 'summary' && <SummaryContent />}
           </>

@@ -67,6 +67,14 @@ interface AppState {
   setIsValidationDrawerOpen: (isOpen: boolean) => void
   toggleValidationDrawer: () => void
 
+  // LoopExplorer ↔ FormEditor sync
+  selectedPath: string | null
+  setSelectedPath: (path: string | null) => void
+
+  // AI prompt pre-fill (from "Ask AI to Fix" buttons)
+  aiPromptContext: string | null
+  setAiPromptContext: (ctx: string | null) => void
+
   // Open center tabs
   openTabs: WorkspaceTab[]
   activeTabId: string
@@ -148,6 +156,12 @@ const useAppStore = create<AppState>((set, get) => ({
   isValidationDrawerOpen: true,
   setIsValidationDrawerOpen: (isOpen) => set({ isValidationDrawerOpen: isOpen }),
   toggleValidationDrawer: () => set((s) => ({ isValidationDrawerOpen: !s.isValidationDrawerOpen })),
+
+  selectedPath: null,
+  setSelectedPath: (path) => set({ selectedPath: path }),
+
+  aiPromptContext: null,
+  setAiPromptContext: (ctx) => set({ aiPromptContext: ctx }),
 
   openTabs: DEFAULT_TABS,
   activeTabId: 'form',
