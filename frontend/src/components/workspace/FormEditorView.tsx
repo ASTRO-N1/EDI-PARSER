@@ -564,51 +564,7 @@ export default function FormEditorView() {
         }}
       >
         {/* Page Header */}
-        <div
-          style={{
-            padding: '20px 28px 16px',
-            borderBottom: '2px solid rgba(26,26,46,0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            background: '#FFFFFF',
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-            boxShadow: '0 2px 0px rgba(26,26,46,0.06)',
-          }}
-        >
-          <div
-            style={{
-              background: '#4ECDC4',
-              border: '2px solid #1A1A2E',
-              borderRadius: 8,
-              padding: '5px 10px',
-              boxShadow: '3px 3px 0px #1A1A2E',
-              transform: 'rotate(-0.5deg)',
-            }}
-          >
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 11, color: '#1A1A2E' }}>
-              837P
-            </span>
-          </div>
-          <div>
-            <h1
-              style={{
-                fontFamily: 'Nunito, sans-serif',
-                fontWeight: 900,
-                fontSize: 16,
-                color: '#1A1A2E',
-                margin: 0,
-                lineHeight: 1.2,
-              }}
-            >
-              Professional Claim Editor
-            </h1>
-            <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: 11, color: 'rgba(26,26,46,0.45)', margin: 0 }}>
-              Click any field to edit · Changes sync in real time
-            </p>
-          </div>
+        <div>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
             {errors.length > 0 && (
               <span

@@ -306,7 +306,8 @@ class EDIParser:
         self.current_claim              = None
         self.current_service_line       = None
         self.current_member             = None
-
+        self.current_loop_id            = None
+        self.current_loop_instance      = None
         # Reconciliation helpers
         self._claim_amounts:      dict = {}   # id(claim) → {claimed, services[]}
         self._claim_dob:          dict = {}   # id(claim) → datetime
@@ -667,7 +668,7 @@ class EDIParser:
             self._close_top_loop(line)
 
     def get_current_loop(self) -> str:
-        return self.loop_stack[-1] if self.loop_stack else "HEADER"
+        return self.loop_stack[-1] if self.loop_stack else None
 
     # =========================================================================
     # 5. LAYER-3 PRESENCE CHECKER
@@ -964,6 +965,11 @@ class EDIParser:
 
         elif seg_id == "CLM":
             amt_str = elements[2].strip() if len(elements) > 2 else ""
+            self.current_claim = {
+                "Segment_ID": "CLM",
+                "PatientControlNumber_01": elements[1].strip() if len(elements) > 1 else "",
+            }
+            self.metrics["total_claims"] += 1
             if not amt_str:
                 self.errors.append({
                     "line": line, "segment": "CLM", "field": "CLM02",
@@ -983,6 +989,13 @@ class EDIParser:
                         "suggestion": "Provide a numeric dollar amount (e.g., 1500.00).",
                     })
                     self._pending_clm_amount = (line, None)
+            if self._pending_clm_amount:
+                _ln, amt = self._pending_clm_amount
+                cid = id(self.current_claim)
+                self._claim_amounts.setdefault(
+                    cid, {"node": self.current_claim, "claimed": None, "services": []})
+                self._claim_amounts[cid]["claimed"] = amt
+                self._pending_clm_amount = None
 
         elif seg_id == "HI":
             for idx in range(1, len(elements)):
@@ -1188,147 +1201,58 @@ class EDIParser:
     # 10. AST (TREE) BUILDER
     # =========================================================================
     def attach_to_tree(self, decoded: dict, seg_id: str, tree: dict):
-        if seg_id in ("ISA", "GS"):
-            tree["header"].append(decoded)
-            return
-        if seg_id in ("GE", "IEA"):
-            tree["trailer"].append(decoded)
+        # Envelope
+        if seg_id in ("ISA", "GS", "ST", "SE", "GE", "IEA"):
+            tree["envelope"][seg_id] = decoded
             return
 
-        if seg_id == "ST":
-            self.current_transaction = {
-                "ST": decoded, "header": [], "providers": [],
-                "remittances": [], "members": [], "trailer": [],
-            }
-            tree["transactions"].append(self.current_transaction)
-            self.hl_nodes.clear()
-            self.current_hl_node = self.current_claim = \
-                self.current_service_line = self.current_member = None
-            return
-
-        if seg_id == "SE":
-            if self.current_transaction:
-                self.current_transaction["trailer"].append(decoded)
-            return
-
-        if not self.current_transaction:
-            return
-
-        # HL graph
-        if seg_id == "HL":
-            hl_id     = decoded.get("HierarchicalIDNumber_01")
-            parent_id = decoded.get("HierarchicalParentIDNumber_02")
-            level     = decoded.get("HierarchicalLevelCode_03")
-            loop_labels = {
-                "20": "2000A - Billing Provider",
-                "22": "2000B - Subscriber",
-                "23": "2000C - Dependent",
-                "PT": "2000D - Patient (Institutional)",
-            }
-            node = {
-                "HL": decoded, "level": level,
-                "Loop_ID": loop_labels.get(level, f"2000 (level={level})"),
-                "subscribers": [], "dependents": [], "claims": [], "details": [],
-            }
-            if level == "20":   self.metrics["total_providers"]   += 1
-            elif level == "22": self.metrics["total_subscribers"] += 1
-
-            if hl_id:
-                self.hl_nodes[hl_id] = node
-            self.current_hl_node = node
-
-            if parent_id and parent_id in self.hl_nodes:
-                parent = self.hl_nodes[parent_id]
-                if parent["level"] in ("20", "22"):
-                    parent["subscribers"].append(node)
-                else:
-                    parent["dependents"].append(node)
+        current_loop = self.get_current_loop() or "UNASSIGNED"
+    
+        is_new_instance = (
+            current_loop != self.current_loop_id
+            or seg_id in ("NM1", "HL", "CLM", "LX", "INS")
+        )
+    
+        if is_new_instance:
+            self.current_loop_id = current_loop
+            self.current_loop_instance = {}
+            tree["loops"].setdefault(current_loop, []).append(self.current_loop_instance)
+    
+        # 🔥 THIS WAS MISSING
+        if self.current_loop_instance is None:
+            self.current_loop_instance = {}
+            tree["loops"].setdefault(current_loop, []).append(self.current_loop_instance)
+    
+        # Store segment
+        if seg_id in self.current_loop_instance:
+            existing = self.current_loop_instance[seg_id]
+            if isinstance(existing, list):
+                existing.append(decoded)
             else:
-                self.current_transaction["providers"].append(node)
-
-            self.current_claim = self.current_service_line = None
-            return
-
-        # 837 claims
-        if seg_id == "CLM":
-            self.metrics["total_claims"] += 1
-            claim_id = decoded.get("PatientControlNumber_01", "Unknown")
-            amount   = decoded.get("TotalClaimChargeAmount_02", "0.00")
-            claim = {
-                "CLM": decoded, "Loop_ID": "2300 - Claim Data",
-                "summary": {"ID": claim_id, "Amount": f"${amount}", "Diagnoses": 0},
-                "service_lines": [], "details": [],
-            }
-            if self.current_hl_node:
-                self.current_hl_node["claims"].append(claim)
-            self.current_claim        = claim
-            self.current_service_line = None
-            if self._pending_clm_amount:
-                _ln, amt = self._pending_clm_amount
-                cid = id(claim)
-                self._claim_amounts.setdefault(
-                    cid, {"node": claim, "claimed": None, "services": []})
-                self._claim_amounts[cid]["claimed"] = amt
-                self._pending_clm_amount = None
-            return
-
-        if seg_id == "LX":
-            self.metrics["total_services"] += 1
-            service = {
-                "LX": decoded, "Loop_ID": "2400 - Service Line",
-                "summary": {}, "details": [],
-            }
-            if self.current_claim:
-                self.current_claim["service_lines"].append(service)
-            self.current_service_line = service
-            return
-
-        if seg_id == "SV1" and self.current_service_line:
-            comp = decoded.get("CompositeMedicalProcedureIdentifier_01", ["", ""])
-            proc = comp[1] if isinstance(comp, list) and len(comp) > 1 else "Unknown"
-            amt  = decoded.get("LineItemChargeAmount_02", "0.00")
-            self.current_service_line["summary"] = {"Procedure": proc, "Amount": f"${amt}"}
-
-        if seg_id == "HI" and self.current_claim:
-            diag_count = sum(
-                1 for k in decoded if k.startswith("HealthCareCodeInformation_"))
-            self.current_claim["summary"]["Diagnoses"] += diag_count
-
-        # 835 remittances
-        if seg_id == "CLP":
-            # Commit any previous pending CLP record
-            self._commit_pending_clp()
-            claim = {
-                "CLP": decoded, "Loop_ID": "2100 - Claim Payment",
-                "service_lines": [], "details": [],
-            }
-            self.current_transaction["remittances"].append(claim)
-            self.current_claim        = claim
-            self.current_service_line = None
-            return
-
-        if seg_id == "SVC":
-            service = {"SVC": decoded, "Loop_ID": "2110 - Service Payment", "details": []}
-            if self.current_claim:
-                self.current_claim["service_lines"].append(service)
-            self.current_service_line = service
-            return
-
-        # 834 enrollments
-        if seg_id == "INS":
-            member = {"INS": decoded, "Loop_ID": "2000 - Member Level", "details": []}
-            self.current_transaction["members"].append(member)
-            self.current_member        = member
-            self._pending_ins_line     = None
-            return
-
-        # Generic attachment
-        if   self.current_service_line: self.current_service_line["details"].append(decoded)
-        elif self.current_claim:        self.current_claim["details"].append(decoded)
-        elif self.current_member:       self.current_member["details"].append(decoded)
-        elif self.current_hl_node:      self.current_hl_node["details"].append(decoded)
-        else:                           self.current_transaction["header"].append(decoded)
-
+                self.current_loop_instance[seg_id] = [existing, decoded]
+        else:
+            self.current_loop_instance[seg_id] = decoded
+            if seg_id in ("ISA", "GS", "ST", "SE", "GE", "IEA"):
+                tree["envelope"][seg_id] = decoded
+                return
+    
+            current_loop = self.get_current_loop() or "UNASSIGNED"
+    
+            is_new_instance = (
+                current_loop != self.current_loop_id
+                or (
+                    seg_id == "HL"
+                    or seg_id == "CLM"
+                    or seg_id == "LX"
+                    or seg_id == "INS"
+                    or (seg_id == "NM1" and current_loop in ("1000A", "1000B", "2010AA", "2010BA", "2010BB", "2010CA"))
+                )  # ← KEY FIX
+            )
+    
+            if is_new_instance:
+                self.current_loop_id = current_loop
+                self.current_loop_instance = {}
+                tree["loops"].setdefault(current_loop, []).append(self.current_loop_instance)
     # =========================================================================
     # 11. LAYER-4 POST-PARSE RECONCILIATION
     # =========================================================================
@@ -1345,8 +1269,11 @@ class EDIParser:
             diff    = round(abs(total - claimed), 2)
             if diff > 0.01:
                 node     = entry.get("node", {})
-                claim_id = (node.get("CLM", {}).get("PatientControlNumber_01", "Unknown")
-                            if isinstance(node, dict) else "Unknown")
+                claim_id = (
+                    node.get("CLM", {}).get("PatientControlNumber_01")
+                    or node.get("PatientControlNumber_01")
+                    or "Unknown"
+                ) if isinstance(node, dict) else "Unknown"
                 self.errors.append({
                     "line": "post-parse", "segment": "CLM", "field": "CLM02",
                     "type": "ClaimAmountMismatch", "loop": "2300/2400",
@@ -1473,14 +1400,18 @@ class EDIParser:
             self.load_schema(schema_file)
 
         tree = {
-            "metadata":           self.metadata,
-            "metrics":            self.metrics,
-            "reference_versions": self._ref.versions,
-            "errors":             self.errors,
-            "warnings":           self.warnings,
-            "header":             [],
-            "transactions":       [],
-            "trailer":            [],
+            "metadata": self.metadata,
+            "envelope": {
+                "ISA": {},
+                "GS": {},
+                "ST": {},
+                "SE": {},
+                "GE": {},
+                "IEA": {},
+            },
+            "loops": {},
+            "errors": self.errors,
+            "warnings": self.warnings,
         }
 
         full_stream = itertools.chain(first_segments, stream)
@@ -1499,9 +1430,5 @@ class EDIParser:
         self.reconcile_dob_vs_service_date() # 837: DOB < service date
         self.detect_duplicate_members()      # 834: no duplicate INS loops
         self.check_required_segments()       # Layer 3: presence checker
-
-        # ── 835 remittance summary ───────────────────────────────────────────
-        if self.metadata.get("transaction_type") == "835":
-            tree["remittance_summary"] = self.build_remittance_summary()
 
         return tree
