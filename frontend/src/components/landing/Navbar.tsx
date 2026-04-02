@@ -44,7 +44,7 @@ export default function Navbar() {
         alignItems: 'center',
         justifyContent: 'space-between',
         background: scrolled ? '#FDFAF4' : 'transparent',
-        borderBottom: scrolled ? '2px solid #1A1A2E' : '2px solid transparent',
+        borderBottom: scrolled ? '2px solid transparent': '2px solid #1A1A2E' ,
         transition: 'background 0.3s ease, border-color 0.3s ease',
       }}
     >
@@ -88,7 +88,7 @@ export default function Navbar() {
           style={{
             padding: '8px 18px',
             borderRadius: 8,
-            fontSize: 14,
+            fontSize: 18,
             color: '#1A1A2E',
             background: '#FFE66D',
             border: '2.5px solid #1A1A2E',

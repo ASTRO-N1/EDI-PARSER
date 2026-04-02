@@ -21,7 +21,7 @@ function X12Badge() {
         fontSize: 14,
         color: '#1A1A2E',
         transform: 'rotate(-1deg)',
-        marginBottom: 24,
+        marginBottom: 19,
         width: 'fit-content',
       }}
     >
