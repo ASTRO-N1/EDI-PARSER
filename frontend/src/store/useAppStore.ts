@@ -8,6 +8,15 @@ interface EDIFile {
   parseResult: Record<string, unknown> | null
 }
 
+export interface WorkspaceTab {
+  id: string
+  label: string
+  type: 'form' | 'raw' | 'summary' | 'remittance' | 'roster'
+  closable: boolean
+}
+
+export type ActivePanelView = 'explorer' | 'history'
+
 interface AppState {
   // Auth state
   session: Session | null
@@ -42,9 +51,38 @@ interface AppState {
   // Active section (for dashboard navigation)
   activeSection: string
   setActiveSection: (section: string) => void
+
+  // ── Workspace IDE State ────────────────────────────────
+
+  // Left panel view switcher (explorer tree vs file history)
+  activePanelView: ActivePanelView
+  setActivePanelView: (view: ActivePanelView) => void
+  isLeftSidebarOpen: boolean
+  setIsLeftSidebarOpen: (isOpen: boolean) => void
+
+  // Floating panels toggles
+  isAIPanelOpen: boolean
+  setIsAIPanelOpen: (isOpen: boolean) => void
+  isValidationDrawerOpen: boolean
+  setIsValidationDrawerOpen: (isOpen: boolean) => void
+  toggleValidationDrawer: () => void
+
+  // Open center tabs
+  openTabs: WorkspaceTab[]
+  activeTabId: string
+  setActiveTabId: (id: string) => void
+  setOpenTabs: (tabs: WorkspaceTab[]) => void
+  addTab: (tab: WorkspaceTab) => void
+  closeTab: (id: string) => void
 }
 
-const useAppStore = create<AppState>((set) => ({
+const DEFAULT_TABS: WorkspaceTab[] = [
+  { id: 'form', label: 'Form View', type: 'form', closable: false },
+  { id: 'raw', label: 'Raw EDI', type: 'raw', closable: true },
+  { id: 'summary', label: 'Summary', type: 'summary', closable: true },
+]
+
+const useAppStore = create<AppState>((set, get) => ({
   // Auth state
   session: null,
   setSession: (session) => set({ session }),
@@ -96,6 +134,40 @@ const useAppStore = create<AppState>((set) => ({
   // Dashboard navigation
   activeSection: 'overview',
   setActiveSection: (section) => set({ activeSection: section }),
+
+  // ── Workspace IDE State ────────────────────────────────
+
+  activePanelView: 'explorer',
+  setActivePanelView: (view) => set({ activePanelView: view }),
+  isLeftSidebarOpen: true,
+  setIsLeftSidebarOpen: (isOpen) => set({ isLeftSidebarOpen: isOpen }),
+
+  isAIPanelOpen: true,
+  setIsAIPanelOpen: (isOpen) => set({ isAIPanelOpen: isOpen }),
+  
+  isValidationDrawerOpen: true,
+  setIsValidationDrawerOpen: (isOpen) => set({ isValidationDrawerOpen: isOpen }),
+  toggleValidationDrawer: () => set((s) => ({ isValidationDrawerOpen: !s.isValidationDrawerOpen })),
+
+  openTabs: DEFAULT_TABS,
+  activeTabId: 'form',
+  setActiveTabId: (id) => set({ activeTabId: id }),
+  setOpenTabs: (tabs) => set({ openTabs: tabs }),
+  addTab: (tab) => {
+    const existing = get().openTabs.find((t) => t.id === tab.id)
+    if (!existing) {
+      set((s) => ({ openTabs: [...s.openTabs, tab] }))
+    }
+    set({ activeTabId: tab.id })
+  },
+  closeTab: (id) => {
+    const tabs = get().openTabs.filter((t) => t.id !== id)
+    const activeId = get().activeTabId
+    set({
+      openTabs: tabs,
+      activeTabId: activeId === id ? (tabs[0]?.id ?? '') : activeId,
+    })
+  },
 }))
 
 function detectFileType(fileName: string): string {
