@@ -8,7 +8,9 @@ const PLACEHOLDER_ERRORS = [
 export default function ValidationDrawer() {
   const parseResult = useAppStore((s) => s.parseResult)
   const ediFile = useAppStore((s) => s.ediFile)
+  const isValidationDrawerOpen = useAppStore((s) => s.isValidationDrawerOpen)
   const hasFile = !!(parseResult || ediFile.fileName)
+  const toggleValidation = useAppStore(s => s.toggleValidationDrawer)
 
   return (
     <div style={{
@@ -36,7 +38,24 @@ export default function ValidationDrawer() {
           Validation Problems
         </span>
         <div style={{ flex: 1 }} />
-        {/* Actions (filters etc) could go here */}
+        <button
+          onClick={toggleValidation}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 4,
+            transition: 'transform 0.3s ease',
+            transform: isValidationDrawerOpen ? 'rotate(0deg)' : 'rotate(180deg)'
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
       </div>
 
       {/* Drawer Body (Scrollable) */}

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import useAppStore from '../../store/useAppStore'
 
 export default function AIPanel() {
   const [messages, setMessages] = useState([
@@ -7,6 +8,8 @@ export default function AIPanel() {
     { id: '3', role: 'assistant', text: 'Loop 2000A represents the Billing Provider. It holds details like the National Provider Identifier (NPI), Address, and Tax ID. If this loop is malformed, the entire claim will be rejected by the clearinghouse.' },
   ])
   const [input, setInput] = useState('')
+  const setIsAIPanelOpen = useAppStore(s => s.setIsAIPanelOpen)
+
   const msgsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -36,6 +39,25 @@ export default function AIPanel() {
         <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 13, color: '#1A1A2E', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           AI Co-Pilot
         </span>
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={() => setIsAIPanelOpen(false)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="Minimize AI Panel"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        </button>
       </div>
 
       {/* Chat Messages */}

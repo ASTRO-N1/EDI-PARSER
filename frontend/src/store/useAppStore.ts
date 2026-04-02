@@ -57,6 +57,15 @@ interface AppState {
   // Left panel view switcher (explorer tree vs file history)
   activePanelView: ActivePanelView
   setActivePanelView: (view: ActivePanelView) => void
+  isLeftSidebarOpen: boolean
+  setIsLeftSidebarOpen: (isOpen: boolean) => void
+
+  // Floating panels toggles
+  isAIPanelOpen: boolean
+  setIsAIPanelOpen: (isOpen: boolean) => void
+  isValidationDrawerOpen: boolean
+  setIsValidationDrawerOpen: (isOpen: boolean) => void
+  toggleValidationDrawer: () => void
 
   // Open center tabs
   openTabs: WorkspaceTab[]
@@ -130,6 +139,15 @@ const useAppStore = create<AppState>((set, get) => ({
 
   activePanelView: 'explorer',
   setActivePanelView: (view) => set({ activePanelView: view }),
+  isLeftSidebarOpen: true,
+  setIsLeftSidebarOpen: (isOpen) => set({ isLeftSidebarOpen: isOpen }),
+
+  isAIPanelOpen: true,
+  setIsAIPanelOpen: (isOpen) => set({ isAIPanelOpen: isOpen }),
+  
+  isValidationDrawerOpen: true,
+  setIsValidationDrawerOpen: (isOpen) => set({ isValidationDrawerOpen: isOpen }),
+  toggleValidationDrawer: () => set((s) => ({ isValidationDrawerOpen: !s.isValidationDrawerOpen })),
 
   openTabs: DEFAULT_TABS,
   activeTabId: 'form',

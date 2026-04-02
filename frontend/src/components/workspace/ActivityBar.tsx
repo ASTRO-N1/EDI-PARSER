@@ -46,6 +46,8 @@ const ITEMS: ActivityItem[] = [
 export default function ActivityBar() {
   const activePanelView = useAppStore((s) => s.activePanelView)
   const setActivePanelView = useAppStore((s) => s.setActivePanelView)
+  const isLeftSidebarOpen = useAppStore((s) => s.isLeftSidebarOpen)
+  const setIsLeftSidebarOpen = useAppStore((s) => s.setIsLeftSidebarOpen)
 
   return (
     <div
@@ -70,7 +72,12 @@ export default function ActivityBar() {
             title={item.label}
             onClick={() => {
               if (item.id !== 'search') {
-                setActivePanelView(item.id as ActivePanelView)
+                if (isActive) {
+                  setIsLeftSidebarOpen(!isLeftSidebarOpen)
+                } else {
+                  setActivePanelView(item.id as ActivePanelView)
+                  setIsLeftSidebarOpen(true)
+                }
               }
             }}
             style={{
@@ -91,7 +98,7 @@ export default function ActivityBar() {
             onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
           >
             {/* Active left indicator bar */}
-            {isActive && (
+            {isActive && isLeftSidebarOpen && (
               <div style={{
                 position: 'absolute',
                 left: -4,
