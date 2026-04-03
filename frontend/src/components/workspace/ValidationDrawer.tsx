@@ -239,23 +239,23 @@ export default function ValidationDrawer() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {errors.map((err) => (
-              <button
+                <button
                 key={err.id}
-                onClick={() => handleErrorClick(err)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  gap: 12,
-                  padding: '8px 12px',
-                  background: '#FFFFFF',
-                  border: '1.5px solid rgba(26,26,46,0.1)',
-                  borderRadius: 6,
-                  boxShadow: '1px 1px 0px rgba(26,26,46,0.05)',
-                  cursor: 'pointer',
-                  transition: 'background 0.1s, box-shadow 0.1s, transform 0.1s',
-                  width: '100%',
-                  textAlign: 'left',
-                }}
+                  onClick={() => handleErrorClick(err)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 12,
+                    padding: '8px 12px',
+                    background: '#FFFFFF',
+                    border: '1.5px solid rgba(26,26,46,0.1)',
+                    borderRadius: 6,
+                    boxShadow: '1px 1px 0px rgba(26,26,46,0.05)',
+                    cursor: 'pointer',
+                    transition: 'background 0.1s, box-shadow 0.1s, transform 0.1s',
+                    width: '100%',
+                    textAlign: 'left',
+                  }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'rgba(78,205,196,0.07)'
                   e.currentTarget.style.boxShadow = '2px 2px 0px rgba(78,205,196,0.3)'

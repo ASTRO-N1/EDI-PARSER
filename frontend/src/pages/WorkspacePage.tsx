@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+// Removed unused import
 import { Panel, Group as PanelGroup } from 'react-resizable-panels'
 import useAppStore from '../store/useAppStore'
 
@@ -10,12 +10,13 @@ import EditorArea from '../components/workspace/EditorArea'
 import ValidationDrawer from '../components/workspace/ValidationDrawer'
 import AIPanel from '../components/workspace/AIPanel'
 import DoodleResizeHandle from '../components/workspace/DoodleResizeHandle'
+import OverviewPage from '../components/dashboard/overview/OverviewPage'
 
 // Cast to any to sidestep prop-type conflicts across different react-resizable-panels versions
 const FlexPanelGroup = PanelGroup as any
 
 export default function WorkspacePage() {
-  const { session, authLoading } = useAppStore()
+  const { authLoading, activeMainView } = useAppStore()
 
   const isLeftSidebarOpen    = useAppStore(s => s.isLeftSidebarOpen)
   const setIsLeftSidebarOpen = useAppStore(s => s.setIsLeftSidebarOpen)
@@ -87,11 +88,6 @@ export default function WorkspacePage() {
     )
   }
 
-  // ── Route guard ─────────────────────────────────────────────────────────────
-  if (!session) {
-    return <Navigate to="/auth" replace />
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#FDFAF4' }}>
 
@@ -104,45 +100,50 @@ export default function WorkspacePage() {
         {/* Fixed Activity Bar */}
         <ActivityBar />
 
-        {/* Resizable Panel Group */}
-        <FlexPanelGroup
-          orientation="horizontal"
-          autoSaveId="workspace-layout-v1"
-        >
+        {activeMainView === 'dashboard' ? (
+          <div style={{ flex: 1, overflowY: 'auto' }} className="custom-scrollbar">
+            <OverviewPage />
+          </div>
+        ) : (
+          <FlexPanelGroup
+            orientation="horizontal"
+            autoSaveId="workspace-layout-v1"
+          >
 
-          {/* Left Panel: Explorer / History */}
-          {isLeftSidebarOpen && (
-            <>
-              <Panel id="left-sidebar" defaultSize={300} minSize={12} collapsible>
-                {/* onMinimize wires the — button inside ExplorerView / HistoryView */}
-                <LeftSidebar onMinimize={() => setIsLeftSidebarOpen(false)} />
-              </Panel>
-              <DoodleResizeHandle />
-            </>
-          )}
+            {/* Left Panel: Explorer / History */}
+            {isLeftSidebarOpen && (
+              <>
+                <Panel id="left-sidebar" defaultSize={300} minSize={12} collapsible>
+                  {/* onMinimize wires the — button inside ExplorerView / HistoryView */}
+                  <LeftSidebar onMinimize={() => setIsLeftSidebarOpen(false)} />
+                </Panel>
+                <DoodleResizeHandle />
+              </>
+            )}
 
-          {/* Center Column: Editor + self-contained resizable Validation Drawer */}
-          <Panel id="center-column" minSize={30}>
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-              {/* Editor fills all available space */}
-              <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-                <EditorArea />
+            {/* Center Column: Editor + self-contained resizable Validation Drawer */}
+            <Panel id="center-column" minSize={30}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {/* Editor fills all available space */}
+                <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                  <EditorArea />
+                </div>
+                {/* ValidationDrawer is pinned to the bottom and manages its own height/drag */}
+                <ValidationDrawer />
               </div>
-              {/* ValidationDrawer is pinned to the bottom and manages its own height/drag */}
-              <ValidationDrawer />
-            </div>
-          </Panel>
-
-          {isAIPanelOpen && <DoodleResizeHandle />}
-
-          {/* Right Panel: AI Co-Pilot Chat */}
-          {isAIPanelOpen && (
-            <Panel id="ai-panel" defaultSize={320} minSize={15} collapsible>
-              <AIPanel />
             </Panel>
-          )}
 
-        </FlexPanelGroup>
+            {isAIPanelOpen && <DoodleResizeHandle />}
+
+            {/* Right Panel: AI Co-Pilot Chat */}
+            {isAIPanelOpen && (
+              <Panel id="ai-panel" defaultSize={320} minSize={15} collapsible>
+                <AIPanel />
+              </Panel>
+            )}
+
+          </FlexPanelGroup>
+        )}
 
       </div>
 

@@ -122,110 +122,112 @@ export default function WorkspaceTopNav() {
         New Parse
       </button>
 
-      {/* Avatar + dropdown */}
-      <div ref={dropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
-        <button
-          onClick={() => setDropdownOpen((v) => !v)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '4px 10px 4px 4px',
-            background: 'transparent',
-            border: '2px solid rgba(26,26,46,0.2)',
-            borderRadius: 999,
-            cursor: 'pointer',
-            transition: 'border-color 0.15s ease',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.borderColor = '#1A1A2E')}
-          onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(26,26,46,0.2)')}
-        >
-          {/* Avatar circle */}
-          <div style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            background: '#FFE66D',
-            border: '2px solid #1A1A2E',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'Nunito, sans-serif',
-            fontWeight: 900,
-            fontSize: 13,
-            color: '#1A1A2E',
-            flexShrink: 0,
-          }}>
-            {avatarLetter}
-          </div>
-          <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 13, color: '#1A1A2E' }}>
-            {displayName}
-          </span>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.5 }}>
-            <path d="M2 4l4 4 4-4" stroke="#1A1A2E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+      {/* Avatar + dropdown - Only shown to logged in users */}
+      {session && (
+        <div ref={dropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            onClick={() => setDropdownOpen((v) => !v)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '4px 10px 4px 4px',
+              background: 'transparent',
+              border: '2px solid rgba(26,26,46,0.2)',
+              borderRadius: 999,
+              cursor: 'pointer',
+              transition: 'border-color 0.15s ease',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = '#1A1A2E')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(26,26,46,0.2)')}
+          >
+            {/* Avatar circle */}
+            <div style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: '#FFE66D',
+              border: '2px solid #1A1A2E',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: 'Nunito, sans-serif',
+              fontWeight: 900,
+              fontSize: 13,
+              color: '#1A1A2E',
+              flexShrink: 0,
+            }}>
+              {avatarLetter}
+            </div>
+            <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 13, color: '#1A1A2E' }}>
+              {displayName}
+            </span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.5 }}>
+              <path d="M2 4l4 4 4-4" stroke="#1A1A2E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
 
-        {/* Dropdown menu */}
-        {dropdownOpen && (
-          <div style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
-            background: '#FDFAF4',
-            border: '2.5px solid #1A1A2E',
-            borderRadius: 12,
-            boxShadow: '5px 5px 0px #1A1A2E',
-            padding: '6px',
-            minWidth: 170,
-            zIndex: 200,
-          }}>
-            {[
-              { label: 'Settings', icon: '⚙️', action: () => setDropdownOpen(false) },
-              { label: 'Developer API', icon: '🔑', action: () => { navigate('/developer'); setDropdownOpen(false) } },
-              { label: 'API Docs', icon: '📚', action: () => { navigate('/docs'); setDropdownOpen(false) } },
-            ].map((item) => (
+          {/* Dropdown menu */}
+          {dropdownOpen && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              right: 0,
+              background: '#FDFAF4',
+              border: '2.5px solid #1A1A2E',
+              borderRadius: 12,
+              boxShadow: '5px 5px 0px #1A1A2E',
+              padding: '6px',
+              minWidth: 170,
+              zIndex: 200,
+            }}>
+              {[
+                { label: 'Settings', icon: '⚙️', action: () => setDropdownOpen(false) },
+                { label: 'Developer API', icon: '🔑', action: () => { navigate('/developer'); setDropdownOpen(false) } },
+                { label: 'API Docs', icon: '📚', action: () => { navigate('/docs'); setDropdownOpen(false) } },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  onClick={item.action}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    width: '100%', padding: '9px 12px',
+                    background: 'transparent', border: 'none',
+                    borderRadius: 8, cursor: 'pointer',
+                    fontFamily: 'Nunito, sans-serif', fontWeight: 700,
+                    fontSize: 13, color: '#1A1A2E', textAlign: 'left',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(78,205,196,0.12)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span style={{ fontSize: 15 }}>{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+              {/* Divider */}
+              <div style={{ height: 1, background: 'rgba(26,26,46,0.1)', margin: '4px 8px' }} />
               <button
-                key={item.label}
-                onClick={item.action}
+                onClick={handleLogout}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   width: '100%', padding: '9px 12px',
                   background: 'transparent', border: 'none',
                   borderRadius: 8, cursor: 'pointer',
                   fontFamily: 'Nunito, sans-serif', fontWeight: 700,
-                  fontSize: 13, color: '#1A1A2E', textAlign: 'left',
+                  fontSize: 13, color: '#FF6B6B', textAlign: 'left',
                   transition: 'background 0.15s',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(78,205,196,0.12)')}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,107,107,0.1)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                <span style={{ fontSize: 15 }}>{item.icon}</span>
-                {item.label}
+                <span style={{ fontSize: 15 }}>←</span>
+                Log Out
               </button>
-            ))}
-            {/* Divider */}
-            <div style={{ height: 1, background: 'rgba(26,26,46,0.1)', margin: '4px 8px' }} />
-            <button
-              onClick={handleLogout}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                width: '100%', padding: '9px 12px',
-                background: 'transparent', border: 'none',
-                borderRadius: 8, cursor: 'pointer',
-                fontFamily: 'Nunito, sans-serif', fontWeight: 700,
-                fontSize: 13, color: '#FF6B6B', textAlign: 'left',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,107,107,0.1)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              <span style={{ fontSize: 15 }}>←</span>
-              Log Out
-            </button>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

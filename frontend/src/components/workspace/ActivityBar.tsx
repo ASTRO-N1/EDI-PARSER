@@ -3,6 +3,17 @@ import useAppStore from '../../store/useAppStore'
 import type { ActivePanelView } from '../../store/useAppStore'
 
 // SVG Icons
+function DashboardIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#4ECDC4' : 'rgba(26,26,46,0.45)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+    </svg>
+  )
+}
+
 function ExplorerIcon({ active }: { active: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#4ECDC4' : 'rgba(26,26,46,0.45)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -32,18 +43,22 @@ function SearchIcon({ active }: { active: boolean }) {
 }
 
 interface ActivityItem {
-  id: ActivePanelView | 'search'
+  id: ActivePanelView | 'search' | 'dashboard'
   label: string
   icon: (active: boolean) => JSX.Element
+  isMainViewToggle?: boolean
 }
 
 const ITEMS: ActivityItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: (a) => <DashboardIcon active={a} />, isMainViewToggle: true },
   { id: 'explorer', label: 'Explorer', icon: (a) => <ExplorerIcon active={a} /> },
   { id: 'history', label: 'History', icon: (a) => <HistoryIcon active={a} /> },
   { id: 'search', label: 'Search', icon: (a) => <SearchIcon active={a} /> },
 ]
 
 export default function ActivityBar() {
+  const activeMainView = useAppStore((s) => s.activeMainView)
+  const setActiveMainView = useAppStore((s) => s.setActiveMainView)
   const activePanelView = useAppStore((s) => s.activePanelView)
   const setActivePanelView = useAppStore((s) => s.setActivePanelView)
   const isLeftSidebarOpen = useAppStore((s) => s.isLeftSidebarOpen)
@@ -65,13 +80,19 @@ export default function ActivityBar() {
       }}
     >
       {ITEMS.map((item) => {
-        const isActive = activePanelView === item.id
+        const isActive = item.isMainViewToggle
+          ? activeMainView === item.id
+          : activeMainView === 'editor' && activePanelView === item.id
+
         return (
           <button
             key={item.id}
             title={item.label}
             onClick={() => {
-              if (item.id !== 'search') {
+              if (item.isMainViewToggle) {
+                setActiveMainView('dashboard')
+              } else if (item.id !== 'search') {
+                setActiveMainView('editor')
                 if (isActive) {
                   setIsLeftSidebarOpen(!isLeftSidebarOpen)
                 } else {
@@ -98,7 +119,7 @@ export default function ActivityBar() {
             onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
           >
             {/* Active left indicator bar */}
-            {isActive && isLeftSidebarOpen && (
+            {isActive && (!item.isMainViewToggle ? isLeftSidebarOpen : true) && (
               <div style={{
                 position: 'absolute',
                 left: -4,

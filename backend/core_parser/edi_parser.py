@@ -1387,8 +1387,15 @@ class EDIParser:
         for seg in stream:
             first_segments.append(seg)
             if seg[0] == "ISA":
-                self.metadata["sender_id"]   = seg[6].strip() if len(seg) > 6 else ""
-                self.metadata["receiver_id"] = seg[8].strip() if len(seg) > 8 else ""
+                self.metadata["sender_id"]      = seg[6].strip()  if len(seg) > 6  else ""
+                self.metadata["receiver_id"]    = seg[8].strip()  if len(seg) > 8  else ""
+                self.metadata["isa_date"]        = seg[9].strip()  if len(seg) > 9  else ""
+                self.metadata["isa_time"]        = seg[10].strip() if len(seg) > 10 else ""
+                self.metadata["control_number"]  = seg[13].strip() if len(seg) > 13 else ""
+            if seg[0] == "GS":
+                self.metadata["gs_control"]      = seg[6].strip()  if len(seg) > 6  else ""
+                self.metadata["gs_date"]         = seg[4].strip()  if len(seg) > 4  else ""
+                self.metadata["gs_time"]         = seg[5].strip()  if len(seg) > 5  else ""
             if seg[0] == "ST":
                 self.metadata["transaction_type"] = seg[1].strip() if len(seg) > 1 else ""
                 if len(seg) > 3:
@@ -1412,6 +1419,7 @@ class EDIParser:
             "loops": {},
             "errors": self.errors,
             "warnings": self.warnings,
+            "metrics": self.metrics,
         }
 
         full_stream = itertools.chain(first_segments, stream)

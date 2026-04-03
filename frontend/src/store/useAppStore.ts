@@ -53,6 +53,9 @@ interface AppState {
   setActiveSection: (section: string) => void
 
   // ── Workspace IDE State ────────────────────────────────
+  
+  activeMainView: 'dashboard' | 'editor'
+  setActiveMainView: (view: 'dashboard' | 'editor') => void
 
   // Left panel view switcher (explorer tree vs file history)
   activePanelView: ActivePanelView
@@ -152,6 +155,9 @@ const useAppStore = create<AppState>((set, get) => ({
   setActiveSection: (section) => set({ activeSection: section }),
 
   // ── Workspace IDE State ────────────────────────────────
+
+  activeMainView: 'dashboard',
+  setActiveMainView: (view) => set({ activeMainView: view }),
 
   activePanelView: 'explorer',
   setActivePanelView: (view) => set({ activePanelView: view }),

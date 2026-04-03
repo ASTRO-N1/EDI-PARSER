@@ -3,15 +3,14 @@ import rough from 'roughjs'
 import KPICard from './KPICard'
 import ClaimCard from './ClaimCard'
 import ValidationBadge from './ValidationBadge'
-import SegmentTree from './SegmentTree'
-import LoopSummary from './LoopSummary'
+
 import GuestUpsellCard from '../GuestUpsellCard'
 import useAppStore from '../../../store/useAppStore'
 import { useTheme } from '../../../theme/ThemeContext'
 import { useIsMobile } from '../../../hooks/useWindowWidth'
 
 export default function OverviewPage() {
-  const { parseResult } = useAppStore()
+  const { parseResult, file } = useAppStore()
   const isMobile = useIsMobile()
   const { t, isDark } = useTheme()
   const validPanelRef = useRef<HTMLDivElement>(null)
@@ -22,20 +21,59 @@ export default function OverviewPage() {
     console.log('[OverviewPage] full parseResult:', JSON.stringify(parseResult, null, 2))
   }, [parseResult])
 
-  const data = parseResult?.data as Record<string, unknown> | undefined
-  const metrics = data?.metrics as Record<string, unknown> | undefined
-  const errorsArr = (data?.errors as unknown[]) ?? []
-  const warningsArr = (data?.warnings as unknown[]) ?? []
-
-  const errCount = errorsArr.length
-  const warnCount = warningsArr.length
-  const totalSegments = (metrics?.total_segments as number) ?? '--'
-  const transactions = data?.transactions as unknown[] | undefined
-  const claimsCount = (metrics?.total_claims as number) ?? (transactions?.length ?? '--')
-  const fileName = (parseResult?.filename as string) ?? '--'
-
   const hasData = parseResult !== null
-  const isValid = hasData && errCount === 0 && warnCount === 0
+
+  // ── KPI metrics ────────────────────────────────────────────────────────────
+  const metricsRoot = (parseResult as any)?.metrics ?? (parseResult as any)?.data?.metrics ?? {}
+  const totalSegments: number | string = metricsRoot?.total_segments ?? '--'
+  const txSets:        number | string = metricsRoot?.total_claims   ?? '--'
+  const fileName    = (parseResult as any)?.filename ?? file?.name ?? '--'
+  const fileSizeBytes = file?.size ?? 0
+  const fileSizeLabel = fileSizeBytes > 0
+    ? fileSizeBytes < 1024
+      ? `${fileSizeBytes} B`
+      : fileSizeBytes < 1024 * 1024
+        ? `${(fileSizeBytes / 1024).toFixed(1)} KB`
+        : `${(fileSizeBytes / (1024 * 1024)).toFixed(2)} MB`
+    : '--'
+
+  // ── Error normalisation (mirrors ValidationDrawer exactly) ─────────────────
+  const rawErrors: unknown[] = (() => {
+    if (!parseResult) return []
+    const root = parseResult as Record<string, any>
+    const nested = root.data || {}
+    // The backend can return both "errors" and "warnings" arrays (or "validation_errors").
+    // We concatenate them all here before normalizing.
+    const e = root.validation_errors ?? root.errors ?? nested.validation_errors ?? nested.errors ?? []
+    const w = root.warnings ?? nested.warnings ?? []
+    return [...(e as any[]), ...(w as any[])]
+  })()
+
+  // Same placeholder fallback used by ValidationDrawer (only shown when NO FILE is uploaded!)
+  const PLACEHOLDER_ERRORS = [
+    { type: 'error'   as const, code: 'InvalidNPI',    element: 'NM109', loop: '2010AA', message: 'Billing Provider NPI is missing or invalid format (must be 10 digits).' },
+    { type: 'warning' as const, code: 'AmountMismatch', element: 'CLM02', loop: '2300',  message: 'Total claim charge amount does not equal sum of service lines (SV102).' },
+  ]
+
+  type NormErr = { type: 'error' | 'warning'; code: string; element: string; loop: string; message: string }
+  const normalise = (raw: unknown[]): NormErr[] =>
+    raw.map((e: any) => ({
+      type:    (e.type === 'warning' || e.type === 'SituationalWarning') ? 'warning' : 'error',
+      code:    e.code ?? e.error_code ?? e.type ?? 'ValidationError',
+      element: e.element ?? e.field ?? e.segment ?? '',
+      loop:    e.loop ?? e.loop_id ?? e.location ?? '',
+      message: e.message ?? e.msg ?? e.description ?? 'Validation error.',
+    } as NormErr))
+
+  // If a file is loaded, use the REAL parsed errors (which may correctly be empty!).
+  // If NO file is loaded, show placeholders.
+  const errorsArr: NormErr[] = hasData
+    ? normalise(rawErrors)
+    : PLACEHOLDER_ERRORS
+
+  const errCount  = errorsArr.filter(e => e.type === 'error').length
+  const warnCount = errorsArr.filter(e => e.type === 'warning').length
+  const isValid   = hasData && errCount === 0 && warnCount === 0
 
   useEffect(() => {
     if (!validRoughRef.current || !validPanelRef.current) return
@@ -95,7 +133,7 @@ export default function OverviewPage() {
         />
         <KPICard
           label="Transaction Sets"
-          value={claimsCount}
+          value={txSets}
           icon="📋"
           color={t.purple}
           subtext="in this interchange"
@@ -113,7 +151,7 @@ export default function OverviewPage() {
         />
         <KPICard
           label="File Size"
-          value="--"
+          value={fileSizeLabel}
           icon="📁"
           color={t.yellow}
           subtext={fileName}
@@ -196,9 +234,9 @@ export default function OverviewPage() {
                 </div>
               </div>
             ) : (
-              // Show errors and warnings
+              // Show errors and warnings from errorsArr (split by type)
               <>
-                {errorsArr.map((err: any, i) => (
+                {errorsArr.filter(e => e.type === 'error').map((err, i) => (
                   <div key={`err-${i}`} style={{
                     background: isDark ? 'rgba(255,107,107,0.12)' : '#FFF0F0',
                     borderLeft: `4px solid ${t.coral}`,
@@ -209,10 +247,11 @@ export default function OverviewPage() {
                     color: t.ink,
                     lineHeight: 1.4,
                   }}>
-                    <strong style={{ color: t.coral }}>Error:</strong> {err.message ?? String(err)}
+                    <strong style={{ color: t.coral }}>Error [{err.code}]:</strong> {err.message}
+                    {err.element && <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: t.inkMuted, marginLeft: 8 }}>· {err.element}{err.loop ? ` @ ${err.loop}` : ''}</span>}
                   </div>
                 ))}
-                {warningsArr.map((warn: any, i) => (
+                {errorsArr.filter(e => e.type === 'warning').map((warn, i) => (
                   <div key={`warn-${i}`} style={{
                     background: isDark ? 'rgba(255,230,109,0.08)' : '#FFFBF0',
                     borderLeft: `4px solid ${t.yellow}`,
@@ -223,7 +262,8 @@ export default function OverviewPage() {
                     color: t.ink,
                     lineHeight: 1.4,
                   }}>
-                    <strong style={{ color: t.yellow }}>Warning:</strong> {warn.message ?? String(warn)}
+                    <strong style={{ color: t.yellow }}>Warning [{warn.code}]:</strong> {warn.message}
+                    {warn.element && <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: t.inkMuted, marginLeft: 8 }}>· {warn.element}{warn.loop ? ` @ ${warn.loop}` : ''}</span>}
                   </div>
                 ))}
               </>
@@ -239,8 +279,6 @@ export default function OverviewPage() {
         marginBottom: 32,
         animation: 'fadeSlideUp 600ms ease-out 400ms both',
       }}>
-        <SegmentTree />
-        <LoopSummary />
       </div>
 
       {/* Guest upsell — shown below all data cards */}
