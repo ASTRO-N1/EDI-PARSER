@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import useAppStore from '../../store/useAppStore'
 
 // ── Floppy disk icon ─────────────────────────────────────────────────────────
 function FloppyDiskIcon() {
@@ -21,6 +22,14 @@ function FloppyDiskIcon() {
 export default function GuestUpsellCard() {
   const [dismissed, setDismissed] = useState(false)
   const navigate = useNavigate()
+
+  // Bring in the session state
+  const session = useAppStore((s) => s.session)
+
+  // If the user is logged in, do not render the guest upsell card
+  if (session) {
+    return null
+  }
 
   return (
     <AnimatePresence>

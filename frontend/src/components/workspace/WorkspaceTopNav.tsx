@@ -19,7 +19,9 @@ function LogoIcon() {
 
 export default function WorkspaceTopNav() {
   const navigate = useNavigate()
-  const { session, parseResult, ediFile } = useAppStore()
+
+  // Bring in clearFile and setActiveMainView from the store
+  const { session, parseResult, ediFile, clearFile, setActiveMainView } = useAppStore()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -44,6 +46,20 @@ export default function WorkspaceTopNav() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     navigate('/')
+  }
+
+  // ── Smart routing for the New Parse button ──
+  const handleNewParse = () => {
+    clearFile() // Clear current file data
+
+    if (session) {
+      // Logged in users stay in the workspace and see the welcome screen
+      setActiveMainView('welcome')
+      navigate('/workspace')
+    } else {
+      // Guest users fall back to the landing page
+      navigate('/')
+    }
   }
 
   return (
@@ -97,7 +113,7 @@ export default function WorkspaceTopNav() {
 
       {/* New parse button */}
       <button
-        onClick={() => navigate('/')}
+        onClick={handleNewParse}
         style={{
           display: 'flex',
           alignItems: 'center',

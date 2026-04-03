@@ -12,10 +12,6 @@ const SAMPLE_FILES = [
   { label: '834 Sample', type: '834' },
 ]
 
-// Allowed extensions — validated by name, not MIME type.
-// iOS Safari / Android Chrome don't reliably set MIME types for custom
-// extensions like .edi, so a MIME-based `accept` prop silently rejects
-// all files on mobile. Extension-based validation works on every platform.
 const ALLOWED_EXTENSIONS = ['.edi', '.txt', '.dat', '.x12', '.zip']
 
 function extensionValidator(file: File) {
@@ -32,27 +28,76 @@ function extensionValidator(file: File) {
 
 export default function UploadZone() {
   const navigate = useNavigate()
+
+  // App Store actions and state
+  const session = useAppStore((s) => s.session)
   const setEdiFile = useAppStore((s) => s.setEdiFile)
   const setFile = useAppStore((s) => s.setFile)
+  const setParseResult = useAppStore((s) => s.setParseResult)
+  const setTransactionType = useAppStore((s) => s.setTransactionType)
+  const setError = useAppStore((s) => s.setError)
+  const setActiveMainView = useAppStore((s) => s.setActiveMainView)
+
   const [loading, setLoading] = useState(false)
 
   const handleFile = useCallback(
-    (file: File) => {
+    async (file: File) => {
       setLoading(true)
+
       setEdiFile(file)
       setFile(file)
-      setTimeout(() => {
-        navigate('/processing')
-      }, 300)
+
+      if (session) {
+        // ── Logged In User Flow ──
+        try {
+          const formData = new FormData()
+          formData.append('file', file)
+
+          const apiUrl = import.meta.env.VITE_API_URL || 'https://edi-parser-production.up.railway.app';
+          const response = await fetch(`${apiUrl}/api/v1/parse`, {
+            method: 'POST',
+            headers: { 'X-Internal-Bypass': 'frontend-ui-secret' },
+            body: formData,
+          })
+
+          if (!response.ok) {
+            throw new Error('Failed to parse EDI file. Backend might be down.')
+          }
+
+          const data = await response.json()
+
+          // Populate store with API results
+          setParseResult(data)
+
+          // Extract and set transaction type for the dashboard UI
+          const type = data.transaction_type ||
+            data.metadata?.transaction_type ||
+            data.file_info?.transaction_type ||
+            "EDI File";
+          setTransactionType(type);
+
+          // Force view to dashboard
+          setActiveMainView('dashboard')
+          navigate('/workspace')
+        } catch (err: any) {
+          setError(err.message || 'An error occurred during parsing')
+          setActiveMainView('dashboard')
+          navigate('/workspace')
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        // ── Guest User Flow ──
+        setTimeout(() => {
+          navigate('/processing')
+        }, 300)
+      }
     },
-    [setEdiFile, setFile, navigate]
+    [session, setEdiFile, setFile, setParseResult, setTransactionType, setActiveMainView, setError, navigate]
   )
 
   const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop: (accepted) => accepted[0] && handleFile(accepted[0]),
-    // No MIME-based `accept` — iOS/Android don't reliably assign MIME types
-    // to custom extensions like .edi, causing silent rejections on mobile.
-    // We validate by file extension via `validator` instead.
     validator: extensionValidator,
     multiple: false,
   })
@@ -68,7 +113,6 @@ export default function UploadZone() {
       const file = new File([blob], `${type}-sample.edi`, { type: 'text/plain' })
       handleFile(file)
     } catch {
-      // Sample file not found — just navigate anyway as demo
       const placeholder = new File(['ISA*00*...'], `${type}-sample.edi`, { type: 'text/plain' })
       handleFile(placeholder)
     }
@@ -76,12 +120,10 @@ export default function UploadZone() {
 
   return (
     <div style={{ width: '100%' }}>
-      {/* Sitting stick figure above upload box */}
       <div style={{ display: 'flex', justifyContent: 'end', marginBottom: -75, top: -58, left: -85, position: 'relative', zIndex: 2 }}>
         <SittingStickFigure size={75} />
       </div>
 
-      {/* Drop zone */}
       <div
         {...getRootProps()}
         className={`upload-zone${isDragActive ? ' drag-over' : ''}${rejectionError ? ' upload-zone-error' : ''}`}
@@ -146,7 +188,6 @@ export default function UploadZone() {
         )}
       </div>
 
-      {/* Sample file pills */}
       <div
         style={{
           display: 'flex',

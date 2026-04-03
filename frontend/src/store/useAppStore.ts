@@ -18,75 +18,61 @@ export interface WorkspaceTab {
 export type ActivePanelView = 'explorer' | 'history'
 
 interface AppState {
-  // Auth state
   session: Session | null
   setSession: (session: Session | null) => void
   authLoading: boolean
   setAuthLoading: (loading: boolean) => void
 
-  // File state
   ediFile: EDIFile
   setEdiFile: (file: File) => void
   clearFile: () => void
 
-  // New Processing Page File State
   file: File | null
   setFile: (file: File) => void
 
-  // Parse result
   parseResult: Record<string, unknown> | null
   setParseResult: (result: Record<string, unknown> | null) => void
 
   transactionType: string | null
   setTransactionType: (type: string | null) => void
 
-  // Loading state
   isLoading: boolean
   setLoading: (loading: boolean) => void
 
-  // Error state
   error: string | null
   setError: (error: string | null) => void
 
-  // Active section (for dashboard navigation)
   activeSection: string
   setActiveSection: (section: string) => void
 
   // ── Workspace IDE State ────────────────────────────────
-  
-  activeMainView: 'dashboard' | 'editor'
-  setActiveMainView: (view: 'dashboard' | 'editor') => void
 
-  // Left panel view switcher (explorer tree vs file history)
+  activeMainView: 'welcome' | 'dashboard' | 'editor'
+  setActiveMainView: (view: 'welcome' | 'dashboard' | 'editor') => void
+
   activePanelView: ActivePanelView
   setActivePanelView: (view: ActivePanelView) => void
   isLeftSidebarOpen: boolean
   setIsLeftSidebarOpen: (isOpen: boolean) => void
 
-  // Floating panels toggles
   isAIPanelOpen: boolean
   setIsAIPanelOpen: (isOpen: boolean) => void
   isValidationDrawerOpen: boolean
   setIsValidationDrawerOpen: (isOpen: boolean) => void
   toggleValidationDrawer: () => void
 
-  // LoopExplorer ↔ FormEditor sync
   selectedPath: string | null
   setSelectedPath: (path: string | null) => void
 
-  // Form field focus sync (from ValidationDrawer error clicks)
   focusFieldId: string | null
   setFocusFieldId: (id: string | null) => void
 
-  // Commit / re-validate state
   isSubmitting: boolean
   setIsSubmitting: (v: boolean) => void
 
-  // AI prompt pre-fill (from "Ask AI to Fix" buttons)
   aiPromptContext: string | null
   setAiPromptContext: (ctx: string | null) => void
 
-  // Open center tabs
   openTabs: WorkspaceTab[]
   activeTabId: string
   setActiveTabId: (id: string) => void
@@ -101,62 +87,54 @@ const DEFAULT_TABS: WorkspaceTab[] = [
   { id: 'summary', label: 'Summary', type: 'summary', closable: true },
 ]
 
+function detectFileType(fileName: string): string {
+  const lower = fileName.toLowerCase()
+  if (lower.includes('837')) return '837'
+  if (lower.includes('835')) return '835'
+  if (lower.includes('834')) return '834'
+  return 'unknown'
+}
+
 const useAppStore = create<AppState>((set, get) => ({
-  // Auth state
   session: null,
   setSession: (session) => set({ session }),
   authLoading: true,
   setAuthLoading: (loading) => set({ authLoading: loading }),
 
-  // File state
-  ediFile: {
-    file: null,
-    fileName: '',
-    fileType: '',
-    parseResult: null,
-  },
+  ediFile: { file: null, fileName: '', fileType: '', parseResult: null },
   setEdiFile: (file: File) =>
     set({
-      ediFile: {
-        file,
-        fileName: file.name,
-        fileType: detectFileType(file.name),
-        parseResult: null,
-      },
+      ediFile: { file, fileName: file.name, fileType: detectFileType(file.name), parseResult: null },
     }),
   clearFile: () =>
     set({
       ediFile: { file: null, fileName: '', fileType: '', parseResult: null },
       file: null,
       parseResult: null,
+      transactionType: null,
     }),
 
-  // New Processing Page File State
   file: null,
   setFile: (file) => set({ file }),
 
-  // Parse result
   parseResult: null,
   setParseResult: (result) => set({ parseResult: result }),
 
   transactionType: null,
   setTransactionType: (type) => set({ transactionType: type }),
 
-  // Loading
   isLoading: false,
   setLoading: (loading) => set({ isLoading: loading }),
 
-  // Error
   error: null,
   setError: (error) => set({ error }),
 
-  // Dashboard navigation
   activeSection: 'overview',
   setActiveSection: (section) => set({ activeSection: section }),
 
   // ── Workspace IDE State ────────────────────────────────
 
-  activeMainView: 'dashboard',
+  activeMainView: 'dashboard', // Default init, WorkspacePage overrides it if needed
   setActiveMainView: (view) => set({ activeMainView: view }),
 
   activePanelView: 'explorer',
@@ -166,7 +144,7 @@ const useAppStore = create<AppState>((set, get) => ({
 
   isAIPanelOpen: true,
   setIsAIPanelOpen: (isOpen) => set({ isAIPanelOpen: isOpen }),
-  
+
   isValidationDrawerOpen: true,
   setIsValidationDrawerOpen: (isOpen) => set({ isValidationDrawerOpen: isOpen }),
   toggleValidationDrawer: () => set((s) => ({ isValidationDrawerOpen: !s.isValidationDrawerOpen })),
@@ -189,9 +167,7 @@ const useAppStore = create<AppState>((set, get) => ({
   setOpenTabs: (tabs) => set({ openTabs: tabs }),
   addTab: (tab) => {
     const existing = get().openTabs.find((t) => t.id === tab.id)
-    if (!existing) {
-      set((s) => ({ openTabs: [...s.openTabs, tab] }))
-    }
+    if (!existing) set((s) => ({ openTabs: [...s.openTabs, tab] }))
     set({ activeTabId: tab.id })
   },
   closeTab: (id) => {
@@ -203,13 +179,5 @@ const useAppStore = create<AppState>((set, get) => ({
     })
   },
 }))
-
-function detectFileType(fileName: string): string {
-  const lower = fileName.toLowerCase()
-  if (lower.includes('837')) return '837'
-  if (lower.includes('835')) return '835'
-  if (lower.includes('834')) return '834'
-  return 'unknown'
-}
 
 export default useAppStore
