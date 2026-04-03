@@ -1,7 +1,7 @@
 import useAppStore from '../../store/useAppStore'
+import { useState, useRef } from 'react'
 
 // ── Error → EDI path + form field mapping ─────────────────────────────────────
-
 interface NormalisedError {
   id: number | string
   type: 'error' | 'warning'
@@ -11,44 +11,33 @@ interface NormalisedError {
   msg: string
 }
 
-// Maps a normalised error to the selectedPath that drives explorer tree scroll
 function resolveTreePath(err: NormalisedError): string {
   const el   = (err.element ?? '').toUpperCase()
   const loop = (err.loop ?? '').toUpperCase()
 
-  if (loop.includes('2010AA') || (loop.includes('2000A') && el.includes('NM1')))
-    return 'loop_2010AA.NM1'
-  if (loop.includes('2010BA') || loop.includes('2000B') && el === 'NM109')
-    return 'loop_2010BA.NM1'
+  if (loop.includes('2010AA') || (loop.includes('2000A') && el.includes('NM1'))) return 'loop_2010AA.NM1'
+  if (loop.includes('2010BA') || loop.includes('2000B') && el === 'NM109') return 'loop_2010BA.NM1'
   if (loop.includes('1000A')) return 'loop_1000A.NM1'
   if (loop.includes('1000B')) return 'loop_1000B.NM1'
-  if (loop.includes('2300') && (el === 'CLM02' || err.code.toLowerCase().includes('amount')))
-    return 'loop_2300.CLM'
-  if (loop.includes('2300') && el.startsWith('HI'))
-    return 'loop_2300.HI'
-  if (loop.includes('2300') && el.startsWith('DTP'))
-    return 'loop_2300.DTP'
+  if (loop.includes('2300') && (el === 'CLM02' || err.code.toLowerCase().includes('amount'))) return 'loop_2300.CLM'
+  if (loop.includes('2300') && el.startsWith('HI')) return 'loop_2300.HI'
+  if (loop.includes('2300') && el.startsWith('DTP')) return 'loop_2300.DTP'
   if (loop.includes('2300')) return 'loop_2300'
-  if (loop.includes('2400') && el.startsWith('SV'))
-    return 'loop_2400[0].SV1'
+  if (loop.includes('2400') && el.startsWith('SV')) return 'loop_2400[0].SV1'
   if (loop.includes('2400')) return 'loop_2400[0]'
 
-  // Fallback: try to infer from element name alone
   if (el.startsWith('NM1') && el === 'NM109') return 'loop_2010AA.NM1'
   if (el === 'CLM02') return 'loop_2300.CLM'
   return 'loop_2300'
 }
 
-// Maps a normalised error to the DOM id of the form <input> to focus
 function resolveFormField(err: NormalisedError): string {
   const el   = (err.element ?? '').toUpperCase()
   const loop = (err.loop ?? '').toUpperCase()
   const code = (err.code ?? '').toLowerCase()
 
-  if (code.includes('npi') || (el === 'NM109' && (loop.includes('2010AA') || loop.includes('2000A'))))
-    return 'billing-npi'
-  if (el === 'NM109' && (loop.includes('2010BA') || loop.includes('2000B')))
-    return 'sub-member-id'
+  if (code.includes('npi') || (el === 'NM109' && (loop.includes('2010AA') || loop.includes('2000A')))) return 'billing-npi'
+  if (el === 'NM109' && (loop.includes('2010BA') || loop.includes('2000B'))) return 'sub-member-id'
   if (el === 'NM103' && loop.includes('1000A')) return 'submitter-name'
   if (el === 'NM103' && loop.includes('1000B')) return 'receiver-name'
   if (el === 'CLM02' || code.includes('amount')) return 'clm-amount'
@@ -64,10 +53,9 @@ function resolveFormField(err: NormalisedError): string {
   if (el === 'N403') return 'billing-zip'
   if (el === 'DMG02') return 'sub-dob'
   if (el === 'DMG03') return 'sub-gender'
-  return 'clm-id'   // safe fallback
+  return 'clm-id'   
 }
 
-// Normalise errors coming from the backend (multiple possible key shapes)
 function normaliseErrors(raw: unknown[]): NormalisedError[] {
   return raw.map((e: any, i) => ({
     id:      e.id ?? i,
@@ -79,40 +67,50 @@ function normaliseErrors(raw: unknown[]): NormalisedError[] {
   }))
 }
 
-// Fallback placeholder errors used when no file is loaded or no errors returned
 const PLACEHOLDER_ERRORS: NormalisedError[] = [
-  {
-    id: 1,
-    type: 'error',
-    code: 'InvalidNPI',
-    element: 'NM109',
-    loop: '2010AA',
-    msg: 'Billing Provider NPI is missing or invalid format (must be 10 digits).',
-  },
-  {
-    id: 2,
-    type: 'warning',
-    code: 'AmountMismatch',
-    element: 'CLM02',
-    loop: '2300',
-    msg: 'Total claim charge amount does not equal sum of service lines (SV102).',
-  },
+  { id: 1, type: 'error', code: 'InvalidNPI', element: 'NM109', loop: '2010AA', msg: 'Billing Provider NPI is missing or invalid format (must be 10 digits).' },
+  { id: 2, type: 'warning', code: 'AmountMismatch', element: 'CLM02', loop: '2300', msg: 'Total claim charge amount does not equal sum of service lines (SV102).' },
 ]
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ValidationDrawer() {
-  const parseResult            = useAppStore((s) => s.parseResult)
-  const ediFile                = useAppStore((s) => s.ediFile)
-  const isValidationDrawerOpen = useAppStore((s) => s.isValidationDrawerOpen)
-  const toggleValidation       = useAppStore((s) => s.toggleValidationDrawer)
-  const setSelectedPath        = useAppStore((s) => s.setSelectedPath)
-  const setFocusFieldId        = useAppStore((s) => s.setFocusFieldId)
-  const setActiveTabId         = useAppStore((s) => s.setActiveTabId)
+  const parseResult        = useAppStore((s) => s.parseResult)
+  const ediFile            = useAppStore((s) => s.ediFile)
+  const setSelectedPath    = useAppStore((s) => s.setSelectedPath)
+  const setFocusFieldId    = useAppStore((s) => s.setFocusFieldId)
+  const setActiveTabId     = useAppStore((s) => s.setActiveTabId)
+  const [isMinimized, setIsMinimized] = useState(false)
+  // Height of the drawer when it is NOT minimized — the user can drag this
+  const [expandedHeight, setExpandedHeight] = useState(220)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartY      = useRef(0)
+  const dragStartHeight = useRef(220)
+
+  const handleDragMouseDown = (e: React.MouseEvent) => {
+    if (isMinimized) return
+    dragStartY.current      = e.clientY
+    dragStartHeight.current = expandedHeight
+    setIsDragging(true)
+    e.preventDefault()
+
+    const onMouseMove = (ev: MouseEvent) => {
+      // Moving the mouse UP (negative delta) increases the drawer height
+      const delta     = dragStartY.current - ev.clientY
+      const newHeight = Math.max(80, Math.min(600, dragStartHeight.current + delta))
+      setExpandedHeight(newHeight)
+    }
+    const onMouseUp = () => {
+      setIsDragging(false)
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }
 
   const hasFile = !!(parseResult || ediFile.fileName)
 
-  // Use real errors when available, otherwise placeholders
   const errors: NormalisedError[] = (() => {
     if (!parseResult) return PLACEHOLDER_ERRORS
     const data = parseResult as Record<string, unknown>
@@ -133,13 +131,36 @@ export default function ValidationDrawer() {
   }
 
   return (
-    <div style={{
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      background: '#FDFAF4',
-      overflow: 'hidden',
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#FDFAF4',
+        overflow: 'hidden',
+        flexShrink: 0,
+        // Height drives both minimize animation and user-drag; suppress transition during drag
+        height: isMinimized ? 44 : expandedHeight,
+        transition: isDragging ? 'none' : 'height 0.3s ease-in-out',
+      }}
+    >
+      {/* ── Drag-resize handle (top edge of the drawer) ────────────── */}
+      <div
+        onMouseDown={handleDragMouseDown}
+        style={{
+          height: 5,
+          flexShrink: 0,
+          cursor: isMinimized ? 'default' : 'ns-resize',
+          background: 'transparent',
+          borderTop: '2px solid rgba(26,26,46,0.1)',
+          transition: 'background 0.15s',
+        }}
+        onMouseEnter={e => {
+          if (!isMinimized) e.currentTarget.style.background = 'rgba(78,205,196,0.45)'
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'transparent'
+        }}
+      />
       {/* Drawer Header */}
       <div style={{
         display: 'flex',
@@ -165,7 +186,6 @@ export default function ValidationDrawer() {
           Validation Problems
         </span>
 
-        {/* Click-to-navigate hint */}
         {hasFile && (
           <span style={{
             marginLeft: 10,
@@ -181,7 +201,7 @@ export default function ValidationDrawer() {
 
         <div style={{ flex: 1 }} />
         <button
-          onClick={toggleValidation}
+          onClick={() => setIsMinimized(v => !v)}
           style={{
             background: 'transparent',
             border: 'none',
@@ -191,7 +211,7 @@ export default function ValidationDrawer() {
             justifyContent: 'center',
             padding: 4,
             transition: 'transform 0.3s ease',
-            transform: isValidationDrawerOpen ? 'rotate(0deg)' : 'rotate(180deg)',
+            transform: isMinimized ? 'rotate(180deg)' : 'rotate(0deg)',
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -200,7 +220,8 @@ export default function ValidationDrawer() {
         </button>
       </div>
 
-      {/* Drawer Body */}
+      {/* ✅ FIX 2: Removed {!isMinimized && ( ... )} around the body. 
+          It stays mounted, and just slides out of view gracefully. */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} className="custom-scrollbar">
         {!hasFile ? (
           <div style={{
@@ -246,12 +267,10 @@ export default function ValidationDrawer() {
                   e.currentTarget.style.transform = 'translateY(0)'
                 }}
               >
-                {/* Severity icon */}
                 <span style={{ fontSize: 13, flexShrink: 0 }}>
                   {err.type === 'error' ? '🔴' : '🟡'}
                 </span>
 
-                {/* Error code + location */}
                 <div style={{ minWidth: 110, flexShrink: 0 }}>
                   <div style={{
                     fontFamily: 'JetBrains Mono, monospace',
@@ -270,7 +289,6 @@ export default function ValidationDrawer() {
                   </div>
                 </div>
 
-                {/* Message */}
                 <div style={{
                   flex: 1,
                   fontFamily: 'Nunito, sans-serif',
@@ -281,7 +299,6 @@ export default function ValidationDrawer() {
                   {err.msg}
                 </div>
 
-                {/* Navigate hint icon */}
                 <div style={{ flexShrink: 0, opacity: 0.35 }}>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                     <path d="M2 6h8M6 2l4 4-4 4" stroke="#1A1A2E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -293,7 +310,7 @@ export default function ValidationDrawer() {
         )}
       </div>
 
-      {/* Footer status bar */}
+      {/* ✅ FIX 3: Removed {!isMinimized && ( ... )} around the footer. */}
       <div style={{
         padding: '4px 16px',
         background: '#FFFFFF',
