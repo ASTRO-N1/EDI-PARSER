@@ -357,7 +357,7 @@ export default function FormEditorView() {
   const selectedPath = useAppStore((s) => s.selectedPath)
   const setIsAIPanelOpen = useAppStore((s) => s.setIsAIPanelOpen)
   const setAiPromptContext = useAppStore((s) => s.setAiPromptContext)
-
+  const isLoading = useAppStore((s) => s.isLoading)
   const sectionRefs = useRef<Record<string, React.RefObject<HTMLDivElement | null>>>({
     submitter: { current: null }, billing: { current: null }, subscriber: { current: null }, claim: { current: null }, service: { current: null },
   })
@@ -446,7 +446,7 @@ export default function FormEditorView() {
     setAiPromptContext(context)
     setIsAIPanelOpen(true)
   }, [setAiPromptContext, setIsAIPanelOpen])
-
+  if (isLoading) return null
   if (!parseResult) return <FormEmptyState />
 
   const rootData = parseResult as Record<string, any>

@@ -16,8 +16,7 @@ import WorkspaceWelcome from '../components/workspace/WorkspaceWelcome'
 const FlexPanelGroup = PanelGroup as any
 
 export default function WorkspacePage() {
-  const { authLoading, activeMainView, setActiveMainView, session, ediFile } = useAppStore()
-
+  const { authLoading, activeMainView, setActiveMainView, session, ediFile, isLoading } = useAppStore()
   const isLeftSidebarOpen = useAppStore(s => s.isLeftSidebarOpen)
   const setIsLeftSidebarOpen = useAppStore(s => s.setIsLeftSidebarOpen)
   const isAIPanelOpen = useAppStore(s => s.isAIPanelOpen)
@@ -52,7 +51,22 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#FDFAF4' }}>
+    <div style={{ position: 'relative',display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#FDFAF4' }}>
+
+      {isLoading && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(253, 250, 244, 0.7)', backdropFilter: 'blur(3px)',
+          zIndex: 9999, display: 'flex', flexDirection: 'column', 
+          alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="doodle-spinner" style={{ width: 48, height: 48 }} />
+          <p style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 16, color: '#1A1A2E', marginTop: 16 }}>
+            Parsing your file...
+          </p>
+        </div>
+      )}
+      {/* Top Navbar */}
       <WorkspaceTopNav />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

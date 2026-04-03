@@ -21,9 +21,20 @@ export default function WorkspaceTopNav() {
   const navigate = useNavigate()
 
   // Bring in clearFile and setActiveMainView from the store
-  const { session, parseResult, ediFile, clearFile, setActiveMainView } = useAppStore()
+  const { session, parseResult, ediFile, clearFile, setActiveMainView, processFileInWorkspace } = useAppStore()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      await processFileInWorkspace(file)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
 
   const fullName = session?.user?.user_metadata?.full_name as string | undefined
   const email = session?.user?.email ?? ''
@@ -111,25 +122,25 @@ export default function WorkspaceTopNav() {
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* New parse button */}
+      {/* HIDDEN FILE INPUT */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+        accept=".edi,.txt,.dat,.x12,.zip"
+      />
+
+      {/* TRIGGER BUTTON */}
       <button
         onClick={handleNewParse}
+        // onClick={() => fileInputRef.current?.click()}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '5px 14px',
-          background: '#4ECDC4',
-          border: '2px solid #1A1A2E',
-          borderRadius: 8,
-          boxShadow: '3px 3px 0px #1A1A2E',
-          fontFamily: 'Nunito, sans-serif',
-          fontWeight: 800,
-          fontSize: 13,
-          color: '#1A1A2E',
-          cursor: 'pointer',
-          flexShrink: 0,
-          transition: 'transform 0.1s, box-shadow 0.1s',
+          display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px',
+          background: '#4ECDC4', border: '2px solid #1A1A2E', borderRadius: 8,
+          boxShadow: '3px 3px 0px #1A1A2E', fontFamily: 'Nunito, sans-serif',
+          fontWeight: 800, fontSize: 13, color: '#1A1A2E', cursor: 'pointer',
+          flexShrink: 0, transition: 'transform 0.1s, box-shadow 0.1s',
         }}
         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '4px 4px 0px #1A1A2E' }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '3px 3px 0px #1A1A2E' }}

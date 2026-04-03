@@ -1,6 +1,5 @@
 import { useCallback, useState, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { useNavigate } from 'react-router-dom'
 import { UploadCloud } from 'lucide-react'
 import { motion } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
@@ -347,17 +346,14 @@ function SummaryContent() {
 
 // ── Empty / No-file upload placeholder ───────────────────────────────────────
 function EmptyDropzone() {
-  const navigate = useNavigate()
-  const setEdiFile = useAppStore((s) => s.setEdiFile)
-  const setFile = useAppStore((s) => s.setFile)
+  const processFileInWorkspace = useAppStore((s) => s.processFileInWorkspace)
   const [loading, setLoading] = useState(false)
 
-  const handleFile = useCallback((file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     setLoading(true)
-    setEdiFile(file)
-    setFile(file)
-    setTimeout(() => navigate('/processing'), 300)
-  }, [setEdiFile, setFile, navigate])
+    await processFileInWorkspace(file)
+    setLoading(false)
+  }, [processFileInWorkspace])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (files) => files[0] && handleFile(files[0]),
@@ -374,36 +370,25 @@ function EmptyDropzone() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 40,
-        gap: 24,
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', padding: 40, gap: 24,
       }}
     >
-      {/* Big upload zone */}
       <div
         {...getRootProps()}
         style={{
           padding: '48px 64px',
           border: `2.5px dashed ${isDragActive ? '#4ECDC4' : 'rgba(26,26,46,0.2)'}`,
-          borderRadius: 16,
-          background: isDragActive ? 'rgba(78,205,196,0.05)' : '#FFFFFF',
+          borderRadius: 16, background: isDragActive ? 'rgba(78,205,196,0.05)' : '#FFFFFF',
           boxShadow: isDragActive ? '4px 4px 0px #4ECDC4' : '4px 4px 0px rgba(26,26,46,0.08)',
-          cursor: 'pointer',
-          textAlign: 'center',
-          transition: 'all 0.2s ease',
-          maxWidth: 480,
-          width: '100%',
+          cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s ease', maxWidth: 480, width: '100%',
         }}
       >
         <input {...getInputProps()} />
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
             <div className="doodle-spinner" style={{ width: 40, height: 40 }} />
-            <p style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: 14, color: '#1A1A2E' }}>Preparing your file…</p>
+            <p style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: 14, color: '#1A1A2E' }}>Parsing your file…</p>
           </div>
         ) : (
           <>
@@ -417,10 +402,6 @@ function EmptyDropzone() {
           </>
         )}
       </div>
-
-      <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: 13, color: 'rgba(26,26,46,0.35)', textAlign: 'center' }}>
-        Supports 837P · 837I · 835 · 834
-      </p>
     </motion.div>
   )
 }

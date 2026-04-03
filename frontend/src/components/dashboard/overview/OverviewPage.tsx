@@ -10,7 +10,7 @@ import { useTheme } from '../../../theme/ThemeContext'
 import { useIsMobile } from '../../../hooks/useWindowWidth'
 
 export default function OverviewPage() {
-  const { parseResult, file } = useAppStore()
+  const { parseResult, file, session } = useAppStore()
   const isMobile = useIsMobile()
   const { t, isDark } = useTheme()
   const validPanelRef = useRef<HTMLDivElement>(null)
@@ -282,7 +282,7 @@ export default function OverviewPage() {
       </div>
 
       {/* Guest upsell — shown below all data cards */}
-      <GuestUpsellCard />
+      {!session && <GuestUpsellCard />}
     </div>
   )
 }

@@ -42,6 +42,10 @@ interface AppState {
   error: string | null
   setError: (error: string | null) => void
 
+  // NEW: Global parsing action
+  processFileInWorkspace: (file: File) => Promise<void>
+
+  // Active section (for dashboard navigation)
   activeSection: string
   setActiveSection: (section: string) => void
 
@@ -129,6 +133,59 @@ const useAppStore = create<AppState>((set, get) => ({
   error: null,
   setError: (error) => set({ error }),
 
+  // NEW: Global parsing action for workspace
+  processFileInWorkspace: async (file: File) => {
+    // 1. Set loading state and clear previous errors
+    set({ isLoading: true, error: null })
+    
+    // 2. Set the file in the store immediately so the UI knows what we are parsing
+    set({ 
+      ediFile: { 
+        file, 
+        fileName: file.name, 
+        fileType: detectFileType(file.name), 
+        parseResult: null 
+      }, 
+      file 
+    })
+      try {
+      // 3. Prepare the form data for the API
+      const formData = new FormData()
+      formData.append('file', file)
+
+      // 4. Send to your backend (USING YOUR EXACT URL AND HEADERS)
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://edi-parser-production.up.railway.app'
+      
+      const response = await fetch(`${apiUrl}/api/v1/parse`, {
+        method: 'POST',
+        headers: { 
+          'X-Internal-Bypass': 'frontend-ui-secret' 
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || 'Failed to parse file')
+      }
+      
+      const data = await response.json()
+      
+      // 5. Update the store with the successful parse result
+      set({ 
+        parseResult: data, 
+        transactionType: data.metadata?.transaction_type || data.transaction_type || detectFileType(file.name) 
+      })
+    } catch (err: any) {
+      set({ error: err.message })
+      console.error('Parsing failed:', err)
+    } finally {
+      // 6. Turn off the loading overlay
+      set({ isLoading: false })
+    }
+  },
+
+  // Dashboard navigation
   activeSection: 'overview',
   setActiveSection: (section) => set({ activeSection: section }),
 

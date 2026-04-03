@@ -340,6 +340,42 @@ class EDIParser:
     # =========================================================================
     def stream_and_tokenize(self):
         with open(self.file_path, "r", encoding="utf-8") as f:
+            # Read enough to safely capture a 106-character ISA
+            head = f.read(500).replace("\n", "").replace("\r", "")
+            isa_start = head.find("ISA")
+            
+            # Ensure ISA exists and we have enough characters to read the fixed positions
+            if isa_start == -1 or len(head) < isa_start + 106:
+                self.errors.append({
+                    "line": 1, "segment": "ISA", "type": "Critical",
+                    "message": "File does not contain a valid 106-character ISA envelope.",
+                    "suggestion": "Ensure the file begins with a strictly formatted 106-character ISA segment.",
+                })
+                return
+
+            isa_string = head[isa_start:isa_start+106]
+            
+            # X12 Standard dictates strict positional characters for the ISA
+            self.element_sep    = isa_string[3]   # 4th character
+            self.subelement_sep = isa_string[104] # 105th character
+            self.segment_sep    = isa_string[105] # 106th character
+
+            f.seek(0)
+            buffer = ""
+            while True:
+                chunk = f.read(4096)
+                if not chunk:
+                    if buffer.strip():
+                        yield buffer.strip().split(self.element_sep)
+                    break
+                buffer += chunk.replace("\n", "").replace("\r", "")
+                while self.segment_sep in buffer:
+                    segment, buffer = buffer.split(self.segment_sep, 1)
+                    segment = segment.strip()
+                    if segment:
+                        yield segment.split(self.element_sep)
+                        
+        with open(self.file_path, "r", encoding="utf-8") as f:
             head      = f.read(500).replace("\n", "").replace("\r", "")
             isa_start = head.find("ISA")
             if isa_start == -1:
