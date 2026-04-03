@@ -1,4 +1,3 @@
-import { useRef, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Panel, Group as PanelGroup } from 'react-resizable-panels'
 import useAppStore from '../store/useAppStore'

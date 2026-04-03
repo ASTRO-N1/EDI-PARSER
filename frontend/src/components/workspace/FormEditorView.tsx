@@ -86,6 +86,21 @@ function getErrors(errors: ValidationError[], targetLoop: string, ...elementKeys
   })
 }
 
+function isFieldActive(activePath: string | null, targetLoop: string, ...elementKeys: string[]): boolean {
+  if (!activePath) return false
+  const path = activePath.toUpperCase()
+  const loop = targetLoop.toUpperCase()
+  
+  if (!path.includes(loop)) return false
+  
+  return elementKeys.some(key => {
+    const k = key.toUpperCase().replace('_', '')
+    const normalizedPath = path.replace(/_/g, '').replace(/\./g, '')
+    return normalizedPath.endsWith(k)
+  })
+}
+
+
 // ── Shared styled input ────────────────────────────────────────────────────────
 
 interface FieldProps {
@@ -481,24 +496,28 @@ export default function FormEditorView() {
                 value={getVal(nm1_1000A, 'NM103', 'name', 'submitter_name', 'NM1_03')}
                 onCommit={(v) => handleCommit(nm1_1000A, ['NM103', 'name', 'submitter_name', 'NM1_03'], v)}
                 errors={getErrors(errors, '1000A', 'NM103', 'NM1_03')}
+                isActive={isFieldActive(activeFieldPath, '1000A', 'NM103', 'NM1_03')}
               />
               <FormField
                 id="submitter-id" label="Submitter ID" mono hint="123456789"
                 value={getVal(nm1_1000A, 'NM109', 'id', 'submitter_id', 'NM1_09')}
                 onCommit={(v) => handleCommit(nm1_1000A, ['NM109', 'id', 'submitter_id', 'NM1_09'], v)}
                 errors={getErrors(errors, '1000A', 'NM109', 'NM1_09')}
+                isActive={isFieldActive(activeFieldPath, '1000A', 'NM109', 'NM1_09')}
               />
               <FormField
                 id="receiver-name" label="Receiver Name" hint="BCBS Clearinghouse"
                 value={getVal(nm1_1000B, 'NM103', 'name', 'receiver_name', 'NM1_03')}
                 onCommit={(v) => handleCommit(nm1_1000B, ['NM103', 'name', 'receiver_name', 'NM1_03'], v)}
                 errors={getErrors(errors, '1000B', 'NM103')}
+                isActive={isFieldActive(activeFieldPath, '1000B', 'NM103')}
               />
               <FormField
                 id="receiver-id" label="Receiver ID" mono hint="987654321"
                 value={getVal(nm1_1000B, 'NM109', 'id', 'receiver_id', 'NM1_09')}
                 onCommit={(v) => handleCommit(nm1_1000B, ['NM109', 'id', 'receiver_id', 'NM1_09'], v)}
                 errors={getErrors(errors, '1000B', 'NM109')}
+                isActive={isFieldActive(activeFieldPath, '1000B', 'NM109')}
               />
             </FieldGrid>
           </SectionCard>
@@ -512,6 +531,7 @@ export default function FormEditorView() {
                 value={getVal(nm1_2010AA, 'NM103', 'name', 'provider_name', 'NM1_03')}
                 onCommit={(v) => handleCommit(nm1_2010AA, ['NM103', 'name', 'provider_name', 'NM1_03'], v)}
                 errors={getErrors(errors, '2010A', 'NM103')}
+                isActive={isFieldActive(activeFieldPath, '2010A', 'NM103')}
               />
               <FormField
                 id="billing-npi" label="NPI (National Provider ID)" mono hint="1234567890"
@@ -519,24 +539,28 @@ export default function FormEditorView() {
                 onCommit={(v) => handleCommit(nm1_2010AA, ['NM109', 'npi', 'NPI', 'NM1_09'], v)}
                 errors={getErrors(errors, '2010A', 'NM109', 'NPI', 'InvalidNPI')}
                 onAskAI={() => askAI('The Billing Provider NPI appears to be invalid. Can you validate and suggest a fix?')}
+                isActive={isFieldActive(activeFieldPath, '2010A', 'NM109', 'NPI')}
               />
               <FormField
                 id="billing-address" label="Address" hint="123 Main St"
                 value={getVal(n3_billing, 'N301', 'address', 'address_line')}
                 onCommit={(v) => handleCommit(n3_billing, ['N301', 'address', 'address_line'], v)}
                 errors={getErrors(errors, '2010A', 'N301')}
+                isActive={isFieldActive(activeFieldPath, '2010A', 'N301')}
               />
               <FormField
                 id="billing-taxid" label="Tax ID / EIN" mono hint="XX-XXXXXXX"
                 value={getVal(ref_billing, 'REF02', 'tax_id', 'ein', 'REF_02')}
                 onCommit={(v) => handleCommit(ref_billing, ['REF02', 'tax_id', 'ein', 'REF_02'], v)}
                 errors={getErrors(errors, '2010A', 'REF02', 'TaxID')}
+                isActive={isFieldActive(activeFieldPath, '2010A', 'REF02', 'TaxID')}
               />
               <FormField
                 id="billing-city" label="City" hint="Chicago"
                 value={getVal(n4_billing, 'N401', 'city')}
                 onCommit={(v) => handleCommit(n4_billing, ['N401', 'city'], v)}
                 errors={getErrors(errors, '2010A', 'N401')}
+                isActive={isFieldActive(activeFieldPath, '2010A', 'N401')}
               />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
                 <FormField
@@ -544,12 +568,14 @@ export default function FormEditorView() {
                   value={getVal(n4_billing, 'N402', 'state')}
                   onCommit={(v) => handleCommit(n4_billing, ['N402', 'state'], v)}
                   errors={getErrors(errors, '2010A', 'N402')}
+                  isActive={isFieldActive(activeFieldPath, '2010A', 'N402')}
                 />
                 <FormField
                   id="billing-zip" label="ZIP" mono hint="60601"
                   value={getVal(n4_billing, 'N403', 'zip', 'postal_code')}
                   onCommit={(v) => handleCommit(n4_billing, ['N403', 'zip', 'postal_code'], v)}
                   errors={getErrors(errors, '2010A', 'N403')}
+                  isActive={isFieldActive(activeFieldPath, '2010A', 'N403')}
                 />
               </div>
             </FieldGrid>
@@ -564,36 +590,42 @@ export default function FormEditorView() {
                 value={getVal(nm1_sub, 'NM109', 'member_id', 'MemberID', 'NM1_09')}
                 onCommit={(v) => handleCommit(nm1_sub, ['NM109', 'member_id', 'MemberID', 'NM1_09'], v)}
                 errors={getErrors(errors, '2010B', 'NM109')}
+                isActive={isFieldActive(activeFieldPath, '2010B', 'NM109')}
               />
               <FormField
                 id="sub-last-name" label="Last Name" hint="Smith"
                 value={getVal(nm1_sub, 'NM103', 'last_name', 'NM1_03')}
                 onCommit={(v) => handleCommit(nm1_sub, ['NM103', 'last_name', 'NM1_03'], v)}
                 errors={getErrors(errors, '2010B', 'NM103')}
+                isActive={isFieldActive(activeFieldPath, '2010B', 'NM103')}
               />
               <FormField
                 id="sub-first-name" label="First Name" hint="Jane"
                 value={getVal(nm1_sub, 'NM104', 'first_name', 'NM1_04')}
                 onCommit={(v) => handleCommit(nm1_sub, ['NM104', 'first_name', 'NM1_04'], v)}
                 errors={getErrors(errors, '2010B', 'NM104')}
+                isActive={isFieldActive(activeFieldPath, '2010B', 'NM104')}
               />
               <FormField
                 id="sub-dob" label="Date of Birth" mono hint="YYYYMMDD"
                 value={getVal(dmg_sub, 'DMG02', 'dob', 'birth_date')}
                 onCommit={(v) => handleCommit(dmg_sub, ['DMG02', 'dob', 'birth_date'], v)}
                 errors={getErrors(errors, '2010B', 'DMG02', 'DOB')}
+                isActive={isFieldActive(activeFieldPath, '2010B', 'DMG02', 'DOB')}
               />
               <FormField
                 id="sub-gender" label="Gender Code" hint="M / F / U"
                 value={getVal(dmg_sub, 'DMG03', 'gender', 'sex')}
                 onCommit={(v) => handleCommit(dmg_sub, ['DMG03', 'gender', 'sex'], v)}
                 errors={getErrors(errors, '2010B', 'DMG03')}
+                isActive={isFieldActive(activeFieldPath, '2010B', 'DMG03')}
               />
               <FormField
                 id="sub-plan" label="Insurance Plan Name" hint="BlueCross PPO"
                 value={getVal(l2010BA, 'plan_name', 'insurance_plan', 'INS03')}
                 onCommit={(v) => handleCommit(l2010BA, ['plan_name', 'insurance_plan', 'INS03'], v)}
                 errors={getErrors(errors, '2010B', 'INS03', 'plan_name')}
+                isActive={isFieldActive(activeFieldPath, '2010B', 'INS03', 'plan_name')}
               />
             </FieldGrid>
           </SectionCard>
@@ -607,24 +639,28 @@ export default function FormEditorView() {
                 value={getVal(clmSeg, 'CLM01', 'claim_id', 'control_number', 'CLM_01')}
                 onCommit={(v) => handleCommit(clmSeg, ['CLM01', 'claim_id', 'control_number', 'CLM_01'], v)}
                 errors={getErrors(errors, '2300', 'CLM01')}
+                isActive={isFieldActive(activeFieldPath, '2300', 'CLM01')}
               />
               <FormField
                 id="clm-amount" label="Total Charge Amount ($)" mono hint="1500.00"
                 value={getVal(clmSeg, 'CLM02', 'total_charge', 'amount', 'CLM_02')}
                 onCommit={(v) => handleCommit(clmSeg, ['CLM02', 'total_charge', 'amount', 'CLM_02'], v)}
                 errors={getErrors(errors, '2300', 'CLM02', 'AmountMismatch')}
+                isActive={isFieldActive(activeFieldPath, '2300', 'CLM02', 'AmountMismatch')}
               />
               <FormField
                 id="clm-service-date" label="Service Date" mono hint="YYYYMMDD"
                 value={getVal(dtpSeg, 'DTP03', 'service_date', 'date')}
                 onCommit={(v) => handleCommit(dtpSeg, ['DTP03', 'service_date', 'date'], v)}
                 errors={getErrors(errors, '2300', 'DTP03')}
+                isActive={isFieldActive(activeFieldPath, '2300', 'DTP03')}
               />
               <FormField
                 id="clm-facility" label="Facility Code" mono hint="11 (Office)"
                 value={getVal(clmSeg, 'CLM05_1', 'facility_code', 'place_of_service')}
                 onCommit={(v) => handleCommit(clmSeg, ['CLM05_1', 'facility_code', 'place_of_service'], v)}
                 errors={getErrors(errors, '2300', 'CLM05')}
+                isActive={isFieldActive(activeFieldPath, '2300', 'CLM05')}
               />
             </FieldGrid>
 
@@ -641,6 +677,7 @@ export default function FormEditorView() {
                       value={getVal(hiSeg, key, `code_${i + 1}`, i === 0 ? 'primary_dx' : `dx_${i + 1}`)}
                       onCommit={(v) => handleCommit(hiSeg, [key, `code_${i + 1}`, i === 0 ? 'primary_dx' : `dx_${i + 1}`], v)}
                       errors={getErrors(errors, '2300', key, 'HI0', 'ICD')}
+                      isActive={isFieldActive(activeFieldPath, '2300', key, 'HI0', 'ICD')}
                     />
                   )
                 })}
@@ -669,36 +706,42 @@ export default function FormEditorView() {
                           value={getVal(sv1, 'SV101', 'procedure_code', 'SV1_01')}
                           onCommit={(v) => handleCommit(sv1, ['SV101', 'procedure_code', 'SV1_01'], v)}
                           errors={getErrors(errors, '2400', 'SV101')}
+                          isActive={isFieldActive(activeFieldPath, '2400', 'SV101')}
                         />
                         <FormField
                           id={`svc-${idx}-amount`} label="Charge ($)" mono hint="150.00"
                           value={getVal(sv1, 'SV102', 'charge', 'amount', 'SV1_02')}
                           onCommit={(v) => handleCommit(sv1, ['SV102', 'charge', 'amount', 'SV1_02'], v)}
                           errors={getErrors(errors, '2400', 'SV102')}
+                          isActive={isFieldActive(activeFieldPath, '2400', 'SV102')}
                         />
                         <FormField
                           id={`svc-${idx}-units`} label="Units" mono hint="1"
                           value={getVal(sv1, 'SV104', 'units', 'SV1_04')}
                           onCommit={(v) => handleCommit(sv1, ['SV104', 'units', 'SV1_04'], v)}
                           errors={getErrors(errors, '2400', 'SV104')}
+                          isActive={isFieldActive(activeFieldPath, '2400', 'SV104')}
                         />
                         <FormField
                           id={`svc-${idx}-modifier`} label="Modifier" mono hint="25"
                           value={getVal(sv1, 'SV101_2', 'modifier', 'SV1_01_2')}
                           onCommit={(v) => handleCommit(sv1, ['SV101_2', 'modifier', 'SV1_01_2'], v)}
                           errors={getErrors(errors, '2400', 'modifier')}
+                          isActive={isFieldActive(activeFieldPath, '2400', 'modifier')}
                         />
                         <FormField
                           id={`svc-${idx}-date`} label="Service Date" mono hint="YYYYMMDD"
                           value={getVal(dtpLine, 'DTP03', 'service_date', 'date')}
                           onCommit={(v) => handleCommit(dtpLine, ['DTP03', 'service_date', 'date'], v)}
                           errors={getErrors(errors, '2400', 'DTP03')}
+                          isActive={isFieldActive(activeFieldPath, '2400', 'DTP03')}
                         />
                         <FormField
                           id={`svc-${idx}-diagptr`} label="Diagnosis Pointer" mono hint="1"
                           value={getVal(sv1, 'SV107', 'diagnosis_pointer', 'SV1_07')}
                           onCommit={(v) => handleCommit(sv1, ['SV107', 'diagnosis_pointer', 'SV1_07'], v)}
                           errors={getErrors(errors, '2400', 'SV107')}
+                          isActive={isFieldActive(activeFieldPath, '2400', 'SV107')}
                         />
                       </FieldGrid>
                     </div>
