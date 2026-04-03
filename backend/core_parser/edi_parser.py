@@ -340,6 +340,121 @@ class EDIParser:
     # =========================================================================
     def stream_and_tokenize(self):
         with open(self.file_path, "r", encoding="utf-8") as f:
+            head = f.read(500).replace("\n", "").replace("\r", "")
+            isa_start = head.find("ISA")
+            
+            if isa_start == -1:
+                self.errors.append({
+                    "line": 1, "segment": "ISA", "type": "Critical",
+                    "message": "File does not contain an ISA envelope."
+                })
+                return
+
+            # 1. Element Separator is ALWAYS the 4th character
+            self.element_sep = head[isa_start + 3]
+
+            # 2. Find "GS". Because ISA is roughly 104-106 chars, we start looking at index 100 
+            # to avoid accidental "GS" matches inside the ISA sender/receiver IDs.
+            # We NO LONGER check for the element separator, because your file switches them!
+            gs_index = head.find("GS", isa_start + 100)
+            
+            if gs_index != -1:
+                # The character right before 'GS' is our segment terminator
+                self.segment_sep = head[gs_index - 1]
+                
+                # Check if ISA is correctly formatted (106 chars) to find sub-element separator
+                isa_length = gs_index - isa_start
+                if isa_length == 106:
+                    self.subelement_sep = head[isa_start + 104]
+                else:
+                    self.subelement_sep = ":"  # Safe fallback for mangled ISA
+                    self.warnings.append({
+                        "line": 1, "segment": "ISA", "type": "MalformedISA",
+                        "loop": "HEADER",
+                        "message": f"ISA segment is {isa_length} chars instead of 106.",
+                        "suggestion": "Assuming ':' as subelement separator."
+                    })
+            else:
+                # Absolute last resort if the file doesn't even have a GS segment.
+                # Most EDI files use '~'. Let's see if there's a '~' near the end of the ISA.
+                fallback_tilde = head.find("~", isa_start + 100, isa_start + 115)
+                if fallback_tilde != -1:
+                    self.segment_sep = "~"
+                else:
+                    self.segment_sep = "\n" # Give up and try newlines
+                self.subelement_sep = ":"
+
+            f.seek(0)
+            buffer = ""
+            while True:
+                chunk = f.read(4096)
+                if not chunk:
+                    if buffer.strip():
+                        yield buffer.strip().split(self.element_sep)
+                    break
+                buffer += chunk.replace("\n", "").replace("\r", "")
+                while self.segment_sep in buffer:
+                    segment, buffer = buffer.split(self.segment_sep, 1)
+                    segment = segment.strip()
+                    if segment:
+                        yield segment.split(self.element_sep)
+        with open(self.file_path, "r", encoding="utf-8") as f:
+            # Read enough to capture the start
+            head = f.read(500).replace("\n", "").replace("\r", "")
+            isa_start = head.find("ISA")
+            
+            if isa_start == -1:
+                self.errors.append({
+                    "line": 1, "segment": "ISA", "type": "Critical",
+                    "message": "File does not contain an ISA envelope."
+                })
+                return
+
+            # 1. Element Separator is ALWAYS the 4th character
+            self.element_sep = head[isa_start + 3]
+
+            # 2. Dynamically find the Segment Terminator by looking for the next segment (GS)
+            # We look for "GS" followed by the element separator to ensure it's the actual segment
+            gs_index = head.find(f"GS{self.element_sep}", isa_start)
+            
+            if gs_index != -1:
+                # The character right before 'GS' is the segment terminator
+                self.segment_sep = head[gs_index - 1]
+                
+                # Check if ISA is malformed (missing the subelement separator)
+                isa_length = gs_index - isa_start
+                if isa_length == 106:
+                    self.subelement_sep = head[isa_start + 104]
+                else:
+                    # File is missing the component separator in ISA! Fallback to standard ':'
+                    self.subelement_sep = ":"
+                    self.warnings.append({
+                        "line": 1, "segment": "ISA", "type": "MalformedISA",
+                        "loop": "HEADER",
+                        "message": f"ISA segment is {isa_length} chars instead of 106. Missing subelement separator.",
+                        "suggestion": "Assuming ':' as subelement separator."
+                    })
+            else:
+                # Fallback if no GS is found at all (highly unusual)
+                self.segment_sep = head[isa_start + 105] if len(head) > isa_start + 105 else "~"
+                self.subelement_sep = head[isa_start + 104] if len(head) > isa_start + 104 else ":"
+
+            f.seek(0)
+            buffer = ""
+            while True:
+                chunk = f.read(4096)
+                if not chunk:
+                    if buffer.strip():
+                        yield buffer.strip().split(self.element_sep)
+                    break
+                buffer += chunk.replace("\n", "").replace("\r", "")
+                while self.segment_sep in buffer:
+                    segment, buffer = buffer.split(self.segment_sep, 1)
+                    segment = segment.strip()
+                    if segment:
+                        yield segment.split(self.element_sep)
+
+        with open(self.file_path, "r", encoding="utf-8") as f:
             # Read enough to safely capture a 106-character ISA
             head = f.read(500).replace("\n", "").replace("\r", "")
             isa_start = head.find("ISA")
