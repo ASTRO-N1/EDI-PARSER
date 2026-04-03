@@ -2,9 +2,6 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useAppStore from '../../store/useAppStore'
 
-// ── API URL helper ─────────────────────────────────────────────────────────────
-const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://edi-parser-production.up.railway.app'
-
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface ValidationError {
@@ -14,47 +11,78 @@ interface ValidationError {
   msg?: string
   code?: string
   type?: 'error' | 'warning'
+  loop?: string
 }
 
 // ── EDI data accessor helpers ─────────────────────────────────────────────────
-// Tries multiple common key name patterns to be resilient to different parsers
 
-function getLoop(data: Record<string, unknown>, ...keys: string[]): Record<string, unknown> | null {
-  if (!data || typeof data !== 'object') return null
-  for (const key of keys) {
-    const val = data[key]
-    if (val && typeof val === 'object' && !Array.isArray(val)) {
-      return val as Record<string, unknown>
+function findLoop(rootData: any, ...keys: string[]): any {
+  if (!rootData) return null
+  const ediData = rootData.data?.loops || rootData.loops || rootData.data || rootData
+  if (!ediData) return null
+
+  for (const k of keys) {
+    if (ediData[k]) return ediData[k]
+  }
+  return null
+}
+
+function findSegment(loop: any, ...segKeys: string[]): any {
+  if (!loop) return null
+  const loopArr = Array.isArray(loop) ? loop : [loop]
+
+  for (const segKey of segKeys) {
+    for (const item of loopArr) {
+      if (item && typeof item === 'object' && item[segKey]) {
+        const seg = item[segKey]
+        return Array.isArray(seg) ? seg[0] : seg
+      }
     }
   }
   return null
 }
 
-function getLoopArray(data: Record<string, unknown>, ...keys: string[]): Record<string, unknown>[] {
-  if (!data || typeof data !== 'object') return []
-  for (const key of keys) {
-    const val = data[key]
-    if (Array.isArray(val)) return val as Record<string, unknown>[]
-    if (val && typeof val === 'object' && !Array.isArray(val)) return [val as Record<string, unknown>]
-  }
-  return []
-}
+function getVal(seg: any, ...fieldKeys: string[]): string {
+  if (!seg) return ''
+  const keys = Object.keys(seg)
 
-function getStr(obj: Record<string, unknown> | null, ...keys: string[]): string {
-  if (!obj) return ''
-  for (const key of keys) {
-    const val = obj[key]
-    if (val != null && val !== '') return String(val)
+  for (const fk of fieldKeys) {
+    if (seg[fk] != null && seg[fk] !== '') return String(seg[fk])
+
+    const suffixMatch = fk.match(/\d{2}$/) 
+    if (suffixMatch) {
+      const suffix = `_${suffixMatch[0]}`
+      for (const k of keys) {
+        if (k.endsWith(suffix) && seg[k] != null && seg[k] !== '') {
+          if (Array.isArray(seg[k])) return seg[k].join(':')
+          return String(seg[k])
+        }
+      }
+    }
+  }
+
+  if (seg.raw_data && Array.isArray(seg.raw_data)) {
+    for (const fk of fieldKeys) {
+      const match = fk.match(/0*(\d+)$/)
+      if (match) {
+        const idx = parseInt(match[1], 10)
+        if (seg.raw_data[idx] != null && seg.raw_data[idx] !== '') {
+          return String(seg.raw_data[idx])
+        }
+      }
+    }
   }
   return ''
 }
 
-// ── Validation helpers ─────────────────────────────────────────────────────────
-
-function getErrors(errors: ValidationError[], ...elementKeys: string[]): ValidationError[] {
+function getErrors(errors: ValidationError[], targetLoop: string, ...elementKeys: string[]): ValidationError[] {
   return errors.filter((e) => {
+    if (e.loop && !e.loop.toUpperCase().startsWith(targetLoop.toUpperCase())) return false
+    
     const el = (e.element ?? e.field ?? '').toUpperCase()
-    return elementKeys.some((k) => el.includes(k.toUpperCase()))
+    const typ = (e.type ?? '').toUpperCase()
+    
+    return elementKeys.some((k) => el.includes(k.toUpperCase()) || typ.includes(k.toUpperCase()))
   })
 }
 
@@ -64,19 +92,26 @@ interface FieldProps {
   id: string
   label: string
   value: string
-  onChange: (v: string) => void
+  onCommit: (newValue: string) => void
   errors?: ValidationError[]
   isActive?: boolean
   mono?: boolean
-  hint?: string        // kept for call-site compatibility; no longer shown as placeholder
+  hint?: string
   onAskAI?: () => void
   inputRef?: React.RefObject<HTMLInputElement | null>
 }
 
-// hint is accepted but intentionally not rendered as a placeholder (Fix 2)
-function FormField({ id, label, value, onChange, errors = [], isActive, mono, onAskAI, inputRef }: FieldProps) {
+function FormField({ id, label, value, onCommit, errors = [], isActive, mono, hint, onAskAI, inputRef }: FieldProps) {
+  const [localVal, setLocalVal] = useState(value)
+
+  // Sync local state if external value updates
+  useEffect(() => {
+    setLocalVal(value)
+  }, [value])
+
   const hasError = errors.length > 0
   const errorMsg = errors[0]?.message ?? errors[0]?.msg ?? ''
+  const isDirty = localVal !== value
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -95,7 +130,7 @@ function FormField({ id, label, value, onChange, errors = [], isActive, mono, on
         >
           {label}
         </label>
-        {hasError && (
+        {hasError && !isDirty && (
           <span
             style={{
               fontFamily: 'Nunito, sans-serif',
@@ -106,7 +141,6 @@ function FormField({ id, label, value, onChange, errors = [], isActive, mono, on
               border: '1.5px solid #FF6B6B',
               borderRadius: 4,
               padding: '1px 6px',
-              letterSpacing: '0.04em',
             }}
           >
             ⚠ ERROR
@@ -116,7 +150,6 @@ function FormField({ id, label, value, onChange, errors = [], isActive, mono, on
           <button
             type="button"
             onClick={onAskAI}
-            className="btn-sticker"
             style={{
               marginLeft: 'auto',
               padding: '2px 10px',
@@ -129,16 +162,7 @@ function FormField({ id, label, value, onChange, errors = [], isActive, mono, on
               fontFamily: 'Nunito, sans-serif',
               fontWeight: 800,
               color: '#1A1A2E',
-              transition: 'all 0.15s ease',
               transform: 'rotate(-0.5deg)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'rotate(0.5deg) translateY(-1px)'
-              e.currentTarget.style.boxShadow = '3px 3px 0px #1A1A2E'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'rotate(-0.5deg)'
-              e.currentTarget.style.boxShadow = '2px 2px 0px #1A1A2E'
             }}
           >
             ✦ Ask AI to Fix
@@ -150,46 +174,83 @@ function FormField({ id, label, value, onChange, errors = [], isActive, mono, on
         id={id}
         ref={inputRef as React.RefObject<HTMLInputElement>}
         type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder=""
+        value={localVal}
+        onChange={(e) => setLocalVal(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setLocalVal(value) // Cancel
+          if (e.key === 'Enter' && isDirty) onCommit(localVal) // Save
+        }}
+        placeholder={hint ?? `Enter ${label.toLowerCase()}…`}
         style={{
           width: '100%',
           padding: '9px 13px',
           fontFamily: mono ? 'JetBrains Mono, monospace' : 'Nunito, sans-serif',
           fontSize: mono ? 12 : 13,
           color: '#1A1A2E',
-          background: hasError ? 'rgba(255,107,107,0.04)' : '#FFFFFF',
-          border: hasError
+          background: hasError && !isDirty ? 'rgba(255,107,107,0.04)' : '#FFFFFF',
+          border: isDirty 
+            ? '2px solid #FFE66D' 
+            : hasError
             ? '2px dashed #FF6B6B'
             : isActive
             ? '2px solid #4ECDC4'
             : '2px solid rgba(26,26,46,0.18)',
           borderRadius: '255px 15px 225px 15px / 15px 225px 15px 255px',
-          boxShadow: hasError
+          boxShadow: isDirty
+            ? '0 0 0 3px rgba(255,230,109,0.2), 2px 2px 0px #FFE66D'
+            : hasError
             ? '3px 3px 0px rgba(255,107,107,0.3)'
             : isActive
             ? '0 0 0 3px rgba(78,205,196,0.2), 3px 3px 0px #4ECDC4'
             : '2px 2px 0px rgba(26,26,46,0.08)',
           outline: 'none',
-          transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
+          transition: 'all 0.2s',
           boxSizing: 'border-box',
-        }}
-        onFocus={(e) => {
-          if (!hasError && !isActive) {
-            e.currentTarget.style.borderColor = '#4ECDC4'
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(78,205,196,0.15), 2px 2px 0px #4ECDC4'
-          }
-        }}
-        onBlur={(e) => {
-          if (!hasError && !isActive) {
-            e.currentTarget.style.borderColor = 'rgba(26,26,46,0.18)'
-            e.currentTarget.style.boxShadow = '2px 2px 0px rgba(26,26,46,0.08)'
-          }
         }}
       />
 
-      {hasError && errorMsg && (
+      <AnimatePresence>
+        {isDirty && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+          <button
+            onClick={() => onCommit(localVal)} // This pushes the change to the main file!
+            style={{
+              padding: '4px 12px',
+              background: '#4ECDC4', 
+              border: '2px solid #1A1A2E',
+              color: '#1A1A2E',
+              fontFamily: 'Nunito, sans-serif',
+              fontWeight: 700,
+              fontSize: 11,
+              borderRadius: 6,
+              boxShadow: '3px 3px 0px #1A1A2E',
+              cursor: 'pointer',
+            }}
+          >
+            Save Change
+          </button>
+          
+          <button
+            onClick={() => setLocalVal(value)} // This reverts the input back to the original!
+            style={{
+              padding: '4px 8px',
+              background: 'transparent',
+              color: '#1A1A2E',
+              fontFamily: 'Nunito, sans-serif',
+              fontWeight: 800,
+              fontSize: 11,              
+              border: '2px solid #1A1A2E',
+              borderRadius: 6,
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      </AnimatePresence>
+
+      {hasError && !isDirty && errorMsg && (
         <motion.p
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
@@ -200,6 +261,7 @@ function FormField({ id, label, value, onChange, errors = [], isActive, mono, on
             fontWeight: 600,
             lineHeight: 1.4,
             paddingLeft: 2,
+            margin: 0
           }}
         >
           {errorMsg}
@@ -209,165 +271,48 @@ function FormField({ id, label, value, onChange, errors = [], isActive, mono, on
   )
 }
 
-// ── Section Header ────────────────────────────────────────────────────────────
+// ── Section Header & Layout Components ────────────────────────────────────────
 
 function SectionHeader({ title, icon, rotate = 0 }: { title: string; icon: string; rotate?: number }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        marginBottom: 20,
-        transform: `rotate(${rotate}deg)`,
-        transformOrigin: 'left center',
-      }}
-    >
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, transform: `rotate(${rotate}deg)`, transformOrigin: 'left center' }}>
       <span style={{ fontSize: 18 }}>{icon}</span>
       <div>
-        <h2
-          style={{
-            fontFamily: 'Nunito, sans-serif',
-            fontWeight: 900,
-            fontSize: 14,
-            color: '#1A1A2E',
-            letterSpacing: '0.07em',
-            textTransform: 'uppercase',
-            margin: 0,
-          }}
-        >
+        <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: 14, color: '#1A1A2E', letterSpacing: '0.07em', textTransform: 'uppercase', margin: 0 }}>
           {title}
         </h2>
-        <div
-          style={{
-            height: 3,
-            width: '100%',
-            background: 'linear-gradient(90deg, #4ECDC4, transparent)',
-            borderRadius: 999,
-            marginTop: 3,
-          }}
-        />
+        <div style={{ height: 3, width: '100%', background: 'linear-gradient(90deg, #4ECDC4, transparent)', borderRadius: 999, marginTop: 3 }} />
       </div>
     </div>
   )
 }
 
-// ── Form Section Card ─────────────────────────────────────────────────────────
-
-function SectionCard({
-  children,
-  sectionRef,
-  isHighlighted,
-}: {
-  children: React.ReactNode
-  sectionRef?: React.RefObject<HTMLDivElement | null>
-  isHighlighted?: boolean
-}) {
+function SectionCard({ children, sectionRef, isHighlighted }: { children: React.ReactNode, sectionRef?: React.RefObject<HTMLDivElement | null>, isHighlighted?: boolean }) {
   return (
     <motion.div
       ref={sectionRef as React.RefObject<HTMLDivElement>}
-      animate={
-        isHighlighted
-          ? { boxShadow: ['4px 4px 0px #4ECDC4', '6px 6px 0px #4ECDC4', '4px 4px 0px #4ECDC4'] }
-          : { boxShadow: '4px 4px 0px #1A1A2E' }
-      }
+      animate={ isHighlighted ? { boxShadow: ['4px 4px 0px #4ECDC4', '6px 6px 0px #4ECDC4', '4px 4px 0px #4ECDC4'] } : { boxShadow: '4px 4px 0px #1A1A2E' } }
       transition={{ duration: 0.6, repeat: isHighlighted ? 2 : 0 }}
-      style={{
-        background: '#FFFFFF',
-        border: isHighlighted ? '2px solid #4ECDC4' : '2px solid #1A1A2E',
-        borderRadius: 12,
-        padding: '24px 24px 28px',
-        position: 'relative',
-        transition: 'border-color 0.3s',
-      }}
+      style={{ background: '#FFFFFF', border: isHighlighted ? '2px solid #4ECDC4' : '2px solid #1A1A2E', borderRadius: 12, padding: '24px 24px 28px', position: 'relative', transition: 'border-color 0.3s' }}
     >
       {children}
     </motion.div>
   )
 }
 
-// ── 2-column responsive grid ───────────────────────────────────────────────────
-
 function FieldGrid({ children, cols = 2 }: { children: React.ReactNode; cols?: number }) {
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gap: '16px 20px',
-      }}
-      className="form-field-grid"
-    >
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '16px 20px' }} className="form-field-grid">
       {children}
     </div>
   )
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
-
 function FormEmptyState() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        gap: 20,
-        padding: 40,
-      }}
-    >
-      <div
-        style={{
-          padding: '44px 60px',
-          border: '2.5px dashed rgba(26,26,46,0.2)',
-          borderRadius: '255px 15px 225px 15px / 15px 225px 15px 255px',
-          background: '#FFFFFF',
-          boxShadow: '4px 4px 0px rgba(26,26,46,0.08)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 16,
-          maxWidth: 440,
-          textAlign: 'center',
-        }}
-      >
-        <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-          <rect x="6" y="6" width="40" height="40" rx="6" stroke="rgba(26,26,46,0.2)" strokeWidth="2" strokeDasharray="5 4" />
-          <path d="M16 26h20M26 16v20" stroke="rgba(26,26,46,0.3)" strokeWidth="2.5" strokeLinecap="round" />
-          <circle cx="38" cy="14" r="5" fill="#FFE66D" stroke="#1A1A2E" strokeWidth="1.5" />
-          <path d="M36 14h4M38 12v4" stroke="#1A1A2E" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
-        <div>
-          <p
-            style={{
-              fontFamily: 'Nunito, sans-serif',
-              fontWeight: 800,
-              fontSize: 16,
-              color: '#1A1A2E',
-              marginBottom: 8,
-            }}
-          >
-            No parsed data found.
-          </p>
-          <p
-            style={{
-              fontFamily: 'Nunito, sans-serif',
-              fontStyle: 'italic',
-              fontSize: 13,
-              color: 'rgba(26,26,46,0.45)',
-              lineHeight: 1.6,
-            }}
-          >
-            Upload a file to begin editing your claim.
-          </p>
-        </div>
-      </div>
-    </motion.div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 40 }}>
+      <p style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 16, color: '#1A1A2E' }}>No parsed data found.</p>
+    </div>
   )
 }
 
@@ -375,11 +320,10 @@ function FormEmptyState() {
 
 const PATH_TO_SECTION: Array<[RegExp, string]> = [
   [/1000[AB]/i, 'submitter'],
-  [/submitter|receiver/i, 'submitter'],
-  [/2010AA|billing_provider|billingProvider/i, 'billing'],
+  [/2010AA|billing_provider/i, 'billing'],
   [/2010BA|subscriber/i, 'subscriber'],
   [/2300|claim/i, 'claim'],
-  [/2400|service_line|serviceLine/i, 'service'],
+  [/2400|service/i, 'service'],
 ]
 
 function resolveSection(path: string | null): string | null {
@@ -393,32 +337,19 @@ function resolveSection(path: string | null): string | null {
 // ── Main FormEditorView ────────────────────────────────────────────────────────
 
 export default function FormEditorView() {
-  const parseResult        = useAppStore((s) => s.parseResult)
-  const setParseResult     = useAppStore((s) => s.setParseResult)
-  const selectedPath       = useAppStore((s) => s.selectedPath)
-  const setIsAIPanelOpen   = useAppStore((s) => s.setIsAIPanelOpen)
-  const setAiPromptContext  = useAppStore((s) => s.setAiPromptContext)
-  const focusFieldId       = useAppStore((s) => s.focusFieldId)
-  const setFocusFieldId    = useAppStore((s) => s.setFocusFieldId)
-  const isSubmitting       = useAppStore((s) => s.isSubmitting)
-  const setIsSubmitting    = useAppStore((s) => s.setIsSubmitting)
-  const rawFile            = useAppStore((s) => s.file)
+  const parseResult = useAppStore((s) => s.parseResult)
+  const setParseResult = useAppStore((s) => s.setParseResult)
+  const selectedPath = useAppStore((s) => s.selectedPath)
+  const setIsAIPanelOpen = useAppStore((s) => s.setIsAIPanelOpen)
+  const setAiPromptContext = useAppStore((s) => s.setAiPromptContext)
 
-  const [submitSuccess, setSubmitSuccess] = useState(false)
-
-  // Section refs for scrollIntoView
   const sectionRefs = useRef<Record<string, React.RefObject<HTMLDivElement | null>>>({
-    submitter: { current: null },
-    billing:   { current: null },
-    subscriber:{ current: null },
-    claim:     { current: null },
-    service:   { current: null },
+    submitter: { current: null }, billing: { current: null }, subscriber: { current: null }, claim: { current: null }, service: { current: null },
   })
 
   const [highlightedSection, setHighlightedSection] = useState<string | null>(null)
-  const [activeFieldPath, setActiveFieldPath]       = useState<string | null>(null)
+  const [activeFieldPath, setActiveFieldPath] = useState<string | null>(null)
 
-  // ── Inbound sync: selectedPath → scroll form section + highlight ──────────
   useEffect(() => {
     if (!selectedPath) return
     const section = resolveSection(selectedPath)
@@ -428,722 +359,354 @@ export default function FormEditorView() {
       ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
       setHighlightedSection(section)
       setActiveFieldPath(selectedPath)
-      const timer = setTimeout(() => {
-        setHighlightedSection(null)
-        setActiveFieldPath(null)
-      }, 2000)
+      const timer = setTimeout(() => { setHighlightedSection(null); setActiveFieldPath(null) }, 2000)
       return () => clearTimeout(timer)
     }
   }, [selectedPath])
 
-  // ── Fix 6b: focusFieldId → scroll to input + focus it ────────────────────
-  useEffect(() => {
-    if (!focusFieldId) return
-    const timer = setTimeout(() => {
-      const el = document.getElementById(focusFieldId) as HTMLInputElement | null
-      if (!el) return
-      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
-      el.focus()
-      setFocusFieldId(null)
-    }, 120)
-    return () => clearTimeout(timer)
-  }, [focusFieldId, setFocusFieldId])
+  // Smart Committer - Finds the exact dynamic key and updates it, then clears errors.
+  const handleCommit = useCallback((segment: any, targetKeys: string[], newValue: string) => {
+    if (!parseResult || !segment) return
 
-  // ── Fix 3b: Commit Changes — re-POST raw file to /api/v1/parse ───────────
-  const handleCommit = useCallback(async () => {
-    if (!rawFile || isSubmitting) return
-    setIsSubmitting(true)
-    setSubmitSuccess(false)
-    try {
-      const formData = new FormData()
-      formData.append('file', rawFile)
-      const res = await fetch(`${API_URL}/api/v1/parse`, {
-        method: 'POST',
-        headers: { 'X-Internal-Bypass': 'frontend-ui-secret' },
-        body: formData,
-      })
-      if (!res.ok) throw new Error('Re-parse failed')
-      const result = await res.json()
-      setParseResult(result)
-      setSubmitSuccess(true)
-      setTimeout(() => setSubmitSuccess(false), 2500)
-    } catch (err) {
-      console.error('[Commit]', err)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [rawFile, isSubmitting, setIsSubmitting, setParseResult])
+    let updated = false
+    const keys = Object.keys(segment)
 
-  // Outbound edit helper — deep-set a value in parseResult
-  const handleFieldChange = useCallback(
-    (keyPath: string[], value: string) => {
-      if (!parseResult) return
-      const updated = structuredClone(parseResult) as Record<string, unknown>
-      let obj: Record<string, unknown> = updated
-      for (let i = 0; i < keyPath.length - 1; i++) {
-        if (obj[keyPath[i]] == null) obj[keyPath[i]] = {}
-        obj = obj[keyPath[i]] as Record<string, unknown>
+    for (const fk of targetKeys) {
+      if (segment[fk] !== undefined) {
+        segment[fk] = newValue
+        updated = true
+        break
       }
-      obj[keyPath[keyPath.length - 1]] = value
-      setParseResult(updated)
-    },
-    [parseResult, setParseResult]
-  )
 
-  const askAI = useCallback(
-    (context: string) => {
-      setAiPromptContext(context)
-      setIsAIPanelOpen(true)
-    },
-    [setAiPromptContext, setIsAIPanelOpen]
-  )
+      const suffixMatch = fk.match(/\d{2}$/)
+      if (suffixMatch) {
+        const suffix = `_${suffixMatch[0]}`
+        for (const k of keys) {
+          if (k.endsWith(suffix) && segment[k] !== undefined) {
+            if (Array.isArray(segment[k])) {
+              segment[k] = newValue.includes(':') ? newValue.split(':') : [newValue]
+            } else {
+              segment[k] = newValue
+            }
+            updated = true
+            break
+          }
+        }
+      }
+      if (updated) break
+    }
+
+    if (!updated && segment.raw_data && Array.isArray(segment.raw_data)) {
+      for (const fk of targetKeys) {
+        const match = fk.match(/0*(\d+)$/)
+        if (match) {
+          const idx = parseInt(match[1], 10)
+          if (segment.raw_data.length > idx) {
+            segment.raw_data[idx] = newValue
+            updated = true
+            break
+          }
+        }
+      }
+    }
+
+    // Clone to trigger re-render and clear local validation errors
+    const newParseResult = structuredClone(parseResult) as any
+
+    const clearErrors = (errArray: any[]) => {
+      if (!errArray) return errArray
+      return errArray.filter((e: any) => {
+        const el = (e.element || e.field || '').toUpperCase()
+        return !targetKeys.some(k => el.includes(k.toUpperCase()))
+      })
+    }
+
+    if (newParseResult.errors) newParseResult.errors = clearErrors(newParseResult.errors)
+    if (newParseResult.data?.errors) newParseResult.data.errors = clearErrors(newParseResult.data.errors)
+
+    setParseResult(newParseResult)
+  }, [parseResult, setParseResult])
+
+  const askAI = useCallback((context: string) => {
+    setAiPromptContext(context)
+    setIsAIPanelOpen(true)
+  }, [setAiPromptContext, setIsAIPanelOpen])
 
   if (!parseResult) return <FormEmptyState />
 
-  // ── Parse the result into form section data ────────────────────────────────
-  const data = parseResult as Record<string, unknown>
-  const errors: ValidationError[] = (
-    (data.validation_errors ?? data.errors ?? []) as ValidationError[]
-  )
+  const rootData = parseResult as Record<string, any>
+  const errors: ValidationError[] = (rootData.errors || rootData.data?.errors || []) as ValidationError[]
 
-  // Loop 1000A / 1000B — Submitter & Receiver
-  const loop1000A = getLoop(data, 'loop_1000A', '1000A', 'submitter', 'submitter_info')
-  const loop1000B = getLoop(data, 'loop_1000B', '1000B', 'receiver', 'receiver_info')
-  const nm1_1000A = getLoop(loop1000A ?? {}, 'NM1', 'nm1') ?? loop1000A
-  const nm1_1000B = getLoop(loop1000B ?? {}, 'NM1', 'nm1') ?? loop1000B
+  const l1000A = findLoop(rootData, '1000A', 'loop_1000A')
+  const nm1_1000A = findSegment(l1000A, 'NM1')
+  
+  const l1000B = findLoop(rootData, '1000B', 'loop_1000B')
+  const nm1_1000B = findSegment(l1000B, 'NM1')
 
-  // Loop 2010AA — Billing Provider
-  const loop2010AA = getLoop(
-    data,
-    'loop_2010AA', '2010AA', 'billing_provider', 'billingProvider',
-    ...(getLoop(data, 'loop_2000A', '2000A') ? ['loop_2000A', '2000A'] : [])
-  ) ?? getLoop(getLoop(data, 'loop_2000A', '2000A') ?? {}, 'loop_2010AA', '2010AA', 'billing_provider') ?? null
-  const nm1_2010AA = getLoop(loop2010AA ?? {}, 'NM1', 'nm1') ?? loop2010AA
-  const n3_billing  = getLoop(loop2010AA ?? {}, 'N3', 'n3')
-  const n4_billing  = getLoop(loop2010AA ?? {}, 'N4', 'n4')
+  const l2010AA = findLoop(rootData, '2010AA', 'loop_2010AA')
+  const nm1_2010AA = findSegment(l2010AA, 'NM1')
+  const n3_billing  = findSegment(l2010AA, 'N3')
+  const n4_billing  = findSegment(l2010AA, 'N4')
+  const ref_billing = findSegment(l2010AA, 'REF') // Pulled REF separately for Tax ID
 
-  // Loop 2010BA — Subscriber
-  const loop2000B = getLoop(data, 'loop_2000B', '2000B', 'subscriber_hl', 'subscriber_hierarchical_level')
-  const loop2010BA = getLoop(loop2000B ?? data, 'loop_2010BA', '2010BA', 'subscriber', 'subscriber_info')
-  const nm1_sub = getLoop(loop2010BA ?? {}, 'NM1', 'nm1') ?? loop2010BA
-  const dmg_sub = getLoop(loop2010BA ?? {}, 'DMG', 'dmg')
+  const l2010BA = findLoop(rootData, '2010BA', 'loop_2010BA')
+  const nm1_sub = findSegment(l2010BA, 'NM1')
+  const dmg_sub = findSegment(l2010BA, 'DMG')
 
-  // Loop 2300 — Claim Info (could be array)
-  const claims = getLoopArray(loop2000B ?? data, 'loop_2300', '2300', 'claims', 'claim_info')
-  const claim0 = claims[0] ?? {}
-  const clmSeg = getLoop(claim0, 'CLM', 'clm') ?? claim0
-  const hiSeg  = getLoop(claim0, 'HI', 'hi')
-  const dtpSeg = getLoop(claim0, 'DTP', 'dtp')
+  const l2300 = findLoop(rootData, '2300', 'loop_2300')
+  const clmSeg = findSegment(l2300, 'CLM')
+  const dtpSeg = findSegment(l2300, 'DTP')
+  const hiSeg  = findSegment(l2300, 'HI')
 
-  // Loop 2400 — Service Lines (array)
-  const serviceLines = getLoopArray(claim0, 'loop_2400', '2400', 'service_lines', 'serviceLines')
+  const l2400 = findLoop(rootData, '2400', 'loop_2400')
+  const serviceLines = (Array.isArray(l2400) && Array.isArray(l2400[0])) ? l2400 : (l2400 ? [l2400] : [])
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Responsive grid style injected as a style tag */}
       <style>{`
-        @media (max-width: 640px) {
-          .form-field-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
+        @media (max-width: 640px) { .form-field-grid { grid-template-columns: 1fr !important; } }
         .form-editor-scroll::-webkit-scrollbar { width: 6px; }
         .form-editor-scroll::-webkit-scrollbar-thumb { background: rgba(78,205,196,0.35); border-radius: 3px; }
-        .form-editor-scroll::-webkit-scrollbar-track { background: transparent; }
-        .form-editor-scroll::-webkit-scrollbar-thumb:hover { background: rgba(78,205,196,0.6); }
       `}</style>
 
-      <div
-        className="form-editor-scroll"
-        style={{
-          height: '100%',
-          overflowY: 'auto',
-          padding: '0 0 40px',
-          background: '#FDFAF4',
-        }}
-      >
-        {/* Page Header */}
-        <div>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-            {errors.length > 0 && (
-              <span
-                style={{
-                  background: 'rgba(255,107,107,0.1)',
-                  border: '1.5px solid #FF6B6B',
-                  borderRadius: 6,
-                  padding: '3px 10px',
-                  fontFamily: 'Nunito, sans-serif',
-                  fontWeight: 800,
-                  fontSize: 11,
-                  color: '#FF6B6B',
-                }}
-              >
-                🔴 {errors.filter((e) => e.type === 'error' || !e.type).length} error
-                {errors.filter((e) => e.type === 'error' || !e.type).length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        </div>
-
+      <div className="form-editor-scroll" style={{ height: '100%', overflowY: 'auto', padding: '0 0 40px', background: '#FDFAF4' }}>
         <div style={{ padding: '28px 28px 0', display: 'flex', flexDirection: 'column', gap: 28 }}>
 
           {/* ── Section 1: Submitter & Receiver ── */}
-          <AnimatePresence>
-            <motion.div
-              key="submitter"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <SectionCard
-                sectionRef={sectionRefs.current.submitter as React.RefObject<HTMLDivElement | null>}
-                isHighlighted={highlightedSection === 'submitter'}
-              >
-                <SectionHeader title="Submitter & Receiver" icon="📤" rotate={-0.4} />
-                <FieldGrid cols={2}>
-                  <FormField
-                    id="submitter-name"
-                    label="Submitter Name"
-                    value={getStr(nm1_1000A, 'NM103', 'name', 'submitter_name', 'NM1_03')}
-                    onChange={(v) => handleFieldChange(['loop_1000A', 'NM1', 'NM103'], v)}
-                    errors={getErrors(errors, 'NM103', 'NM1_03')}
-                    isActive={activeFieldPath?.includes('1000A')}
-                    hint="ACME Billing Inc."
-                  />
-                  <FormField
-                    id="submitter-id"
-                    label="Submitter ID"
-                    value={getStr(nm1_1000A, 'NM109', 'id', 'submitter_id', 'NM1_09')}
-                    onChange={(v) => handleFieldChange(['loop_1000A', 'NM1', 'NM109'], v)}
-                    errors={getErrors(errors, 'NM109')}
-                    mono
-                    hint="123456789"
-                  />
-                  <FormField
-                    id="receiver-name"
-                    label="Receiver Name"
-                    value={getStr(nm1_1000B, 'NM103', 'name', 'receiver_name', 'NM1_03')}
-                    onChange={(v) => handleFieldChange(['loop_1000B', 'NM1', 'NM103'], v)}
-                    errors={getErrors(errors, 'NM103')}
-                    hint="BCBS Clearinghouse"
-                  />
-                  <FormField
-                    id="receiver-id"
-                    label="Receiver ID"
-                    value={getStr(nm1_1000B, 'NM109', 'id', 'receiver_id')}
-                    onChange={(v) => handleFieldChange(['loop_1000B', 'NM1', 'NM109'], v)}
-                    errors={getErrors(errors, 'NM109')}
-                    mono
-                    hint="987654321"
-                  />
-                </FieldGrid>
-                <div style={{ position: 'absolute', bottom: 10, right: 14 }} className="corner-tag">
-                  Loop 1000A/B
-                </div>
-              </SectionCard>
-            </motion.div>
-          </AnimatePresence>
+          <SectionCard sectionRef={sectionRefs.current.submitter as React.RefObject<HTMLDivElement>} isHighlighted={highlightedSection === 'submitter'}>
+            <SectionHeader title="Submitter & Receiver" icon="📤" rotate={-0.4} />
+            <FieldGrid cols={2}>
+              <FormField
+                id="submitter-name" label="Submitter Name" hint="ACME Billing Inc."
+                value={getVal(nm1_1000A, 'NM103', 'name', 'submitter_name', 'NM1_03')}
+                onCommit={(v) => handleCommit(nm1_1000A, ['NM103', 'name', 'submitter_name', 'NM1_03'], v)}
+                errors={getErrors(errors, '1000A', 'NM103', 'NM1_03')}
+              />
+              <FormField
+                id="submitter-id" label="Submitter ID" mono hint="123456789"
+                value={getVal(nm1_1000A, 'NM109', 'id', 'submitter_id', 'NM1_09')}
+                onCommit={(v) => handleCommit(nm1_1000A, ['NM109', 'id', 'submitter_id', 'NM1_09'], v)}
+                errors={getErrors(errors, '1000A', 'NM109', 'NM1_09')}
+              />
+              <FormField
+                id="receiver-name" label="Receiver Name" hint="BCBS Clearinghouse"
+                value={getVal(nm1_1000B, 'NM103', 'name', 'receiver_name', 'NM1_03')}
+                onCommit={(v) => handleCommit(nm1_1000B, ['NM103', 'name', 'receiver_name', 'NM1_03'], v)}
+                errors={getErrors(errors, '1000B', 'NM103')}
+              />
+              <FormField
+                id="receiver-id" label="Receiver ID" mono hint="987654321"
+                value={getVal(nm1_1000B, 'NM109', 'id', 'receiver_id', 'NM1_09')}
+                onCommit={(v) => handleCommit(nm1_1000B, ['NM109', 'id', 'receiver_id', 'NM1_09'], v)}
+                errors={getErrors(errors, '1000B', 'NM109')}
+              />
+            </FieldGrid>
+          </SectionCard>
 
           {/* ── Section 2: Billing Provider ── */}
-          <motion.div
-            key="billing"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.08 }}
-          >
-            <SectionCard
-              sectionRef={sectionRefs.current.billing as React.RefObject<HTMLDivElement | null>}
-              isHighlighted={highlightedSection === 'billing'}
-            >
-              <SectionHeader title="Billing Provider" icon="🏥" rotate={0.3} />
-              <FieldGrid cols={2}>
+          <SectionCard sectionRef={sectionRefs.current.billing as React.RefObject<HTMLDivElement>} isHighlighted={highlightedSection === 'billing'}>
+            <SectionHeader title="Billing Provider" icon="🏥" rotate={0.3} />
+            <FieldGrid cols={2}>
+              <FormField
+                id="billing-name" label="Provider Name" hint="Metro Medical Group"
+                value={getVal(nm1_2010AA, 'NM103', 'name', 'provider_name', 'NM1_03')}
+                onCommit={(v) => handleCommit(nm1_2010AA, ['NM103', 'name', 'provider_name', 'NM1_03'], v)}
+                errors={getErrors(errors, '2010A', 'NM103')}
+              />
+              <FormField
+                id="billing-npi" label="NPI (National Provider ID)" mono hint="1234567890"
+                value={getVal(nm1_2010AA, 'NM109', 'npi', 'NPI', 'NM1_09')}
+                onCommit={(v) => handleCommit(nm1_2010AA, ['NM109', 'npi', 'NPI', 'NM1_09'], v)}
+                errors={getErrors(errors, '2010A', 'NM109', 'NPI', 'InvalidNPI')}
+                onAskAI={() => askAI('The Billing Provider NPI appears to be invalid. Can you validate and suggest a fix?')}
+              />
+              <FormField
+                id="billing-address" label="Address" hint="123 Main St"
+                value={getVal(n3_billing, 'N301', 'address', 'address_line')}
+                onCommit={(v) => handleCommit(n3_billing, ['N301', 'address', 'address_line'], v)}
+                errors={getErrors(errors, '2010A', 'N301')}
+              />
+              <FormField
+                id="billing-taxid" label="Tax ID / EIN" mono hint="XX-XXXXXXX"
+                value={getVal(ref_billing, 'REF02', 'tax_id', 'ein', 'REF_02')}
+                onCommit={(v) => handleCommit(ref_billing, ['REF02', 'tax_id', 'ein', 'REF_02'], v)}
+                errors={getErrors(errors, '2010A', 'REF02', 'TaxID')}
+              />
+              <FormField
+                id="billing-city" label="City" hint="Chicago"
+                value={getVal(n4_billing, 'N401', 'city')}
+                onCommit={(v) => handleCommit(n4_billing, ['N401', 'city'], v)}
+                errors={getErrors(errors, '2010A', 'N401')}
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
                 <FormField
-                  id="billing-name"
-                  label="Provider Name"
-                  value={getStr(nm1_2010AA, 'NM103', 'name', 'provider_name', 'NM1_03')}
-                  onChange={(v) => handleFieldChange(['loop_2010AA', 'NM1', 'NM103'], v)}
-                  errors={getErrors(errors, 'NM103')}
-                  isActive={activeFieldPath?.includes('2010AA')}
-                  hint="Metro Medical Group"
+                  id="billing-state" label="State" hint="IL"
+                  value={getVal(n4_billing, 'N402', 'state')}
+                  onCommit={(v) => handleCommit(n4_billing, ['N402', 'state'], v)}
+                  errors={getErrors(errors, '2010A', 'N402')}
                 />
                 <FormField
-                  id="billing-npi"
-                  label="NPI (National Provider ID)"
-                  value={getStr(nm1_2010AA, 'NM109', 'npi', 'NPI', 'NM1_09')}
-                  onChange={(v) => handleFieldChange(['loop_2010AA', 'NM1', 'NM109'], v)}
-                  errors={getErrors(errors, 'NM109', 'NPI', 'InvalidNPI')}
-                  isActive={activeFieldPath?.includes('2010AA')}
-                  mono
-                  hint="1234567890"
-                  onAskAI={() => askAI('The Billing Provider NPI (NM109 in Loop 2010AA) appears to be invalid. A valid NPI is exactly 10 digits. Can you validate and suggest a fix?')}
+                  id="billing-zip" label="ZIP" mono hint="60601"
+                  value={getVal(n4_billing, 'N403', 'zip', 'postal_code')}
+                  onCommit={(v) => handleCommit(n4_billing, ['N403', 'zip', 'postal_code'], v)}
+                  errors={getErrors(errors, '2010A', 'N403')}
                 />
-                <FormField
-                  id="billing-address"
-                  label="Address"
-                  value={getStr(n3_billing, 'N301', 'address', 'address_line')}
-                  onChange={(v) => handleFieldChange(['loop_2010AA', 'N3', 'N301'], v)}
-                  errors={getErrors(errors, 'N301')}
-                  hint="123 Main St"
-                />
-                <FormField
-                  id="billing-taxid"
-                  label="Tax ID / EIN"
-                  value={getStr(nm1_2010AA, 'REF02', 'tax_id', 'ein', 'REF_02')}
-                  onChange={(v) => handleFieldChange(['loop_2010AA', 'REF', 'REF02'], v)}
-                  errors={getErrors(errors, 'REF02', 'TaxID')}
-                  mono
-                  hint="XX-XXXXXXX"
-                />
-                <FormField
-                  id="billing-city"
-                  label="City"
-                  value={getStr(n4_billing, 'N401', 'city')}
-                  onChange={(v) => handleFieldChange(['loop_2010AA', 'N4', 'N401'], v)}
-                  errors={getErrors(errors, 'N401')}
-                  hint="Chicago"
-                />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-                  <FormField
-                    id="billing-state"
-                    label="State"
-                    value={getStr(n4_billing, 'N402', 'state')}
-                    onChange={(v) => handleFieldChange(['loop_2010AA', 'N4', 'N402'], v)}
-                    errors={getErrors(errors, 'N402')}
-                    hint="IL"
-                  />
-                  <FormField
-                    id="billing-zip"
-                    label="ZIP"
-                    value={getStr(n4_billing, 'N403', 'zip', 'postal_code')}
-                    onChange={(v) => handleFieldChange(['loop_2010AA', 'N4', 'N403'], v)}
-                    errors={getErrors(errors, 'N403')}
-                    mono
-                    hint="60601"
-                  />
-                </div>
-              </FieldGrid>
-              <div style={{ position: 'absolute', bottom: 10, right: 14 }} className="corner-tag">
-                Loop 2010AA
               </div>
-            </SectionCard>
-          </motion.div>
+            </FieldGrid>
+          </SectionCard>
 
           {/* ── Section 3: Subscriber ── */}
-          <motion.div
-            key="subscriber"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.16 }}
-          >
-            <SectionCard
-              sectionRef={sectionRefs.current.subscriber as React.RefObject<HTMLDivElement | null>}
-              isHighlighted={highlightedSection === 'subscriber'}
-            >
-              <SectionHeader title="Subscriber / Patient" icon="👤" rotate={-0.3} />
-              <FieldGrid cols={2}>
-                <FormField
-                  id="sub-member-id"
-                  label="Member ID"
-                  value={getStr(nm1_sub, 'NM109', 'member_id', 'MemberID', 'NM1_09')}
-                  onChange={(v) => handleFieldChange(['loop_2010BA', 'NM1', 'NM109'], v)}
-                  errors={getErrors(errors, 'NM109')}
-                  isActive={activeFieldPath?.includes('2010BA')}
-                  mono
-                  hint="A123456789"
-                />
-                <FormField
-                  id="sub-last-name"
-                  label="Last Name"
-                  value={getStr(nm1_sub, 'NM103', 'last_name', 'NM1_03')}
-                  onChange={(v) => handleFieldChange(['loop_2010BA', 'NM1', 'NM103'], v)}
-                  errors={getErrors(errors, 'NM103')}
-                  hint="Smith"
-                />
-                <FormField
-                  id="sub-first-name"
-                  label="First Name"
-                  value={getStr(nm1_sub, 'NM104', 'first_name', 'NM1_04')}
-                  onChange={(v) => handleFieldChange(['loop_2010BA', 'NM1', 'NM104'], v)}
-                  errors={getErrors(errors, 'NM104')}
-                  hint="Jane"
-                />
-                <FormField
-                  id="sub-dob"
-                  label="Date of Birth"
-                  value={getStr(dmg_sub, 'DMG02', 'dob', 'birth_date')}
-                  onChange={(v) => handleFieldChange(['loop_2010BA', 'DMG', 'DMG02'], v)}
-                  errors={getErrors(errors, 'DMG02', 'DOB')}
-                  mono
-                  hint="YYYYMMDD"
-                />
-                <FormField
-                  id="sub-gender"
-                  label="Gender Code"
-                  value={getStr(dmg_sub, 'DMG03', 'gender', 'sex')}
-                  onChange={(v) => handleFieldChange(['loop_2010BA', 'DMG', 'DMG03'], v)}
-                  errors={getErrors(errors, 'DMG03')}
-                  hint="M / F / U"
-                />
-                <FormField
-                  id="sub-plan"
-                  label="Insurance Plan Name"
-                  value={getStr(loop2010BA, 'plan_name', 'insurance_plan', 'INS03')}
-                  onChange={(v) => handleFieldChange(['loop_2010BA', 'plan_name'], v)}
-                  errors={getErrors(errors, 'INS03', 'plan_name')}
-                  hint="BlueCross PPO"
-                />
-              </FieldGrid>
-              <div style={{ position: 'absolute', bottom: 10, right: 14 }} className="corner-tag">
-                Loop 2010BA
-              </div>
-            </SectionCard>
-          </motion.div>
+          <SectionCard sectionRef={sectionRefs.current.subscriber as React.RefObject<HTMLDivElement>} isHighlighted={highlightedSection === 'subscriber'}>
+            <SectionHeader title="Subscriber / Patient" icon="👤" rotate={-0.3} />
+            <FieldGrid cols={2}>
+              <FormField
+                id="sub-member-id" label="Member ID" mono hint="A123456789"
+                value={getVal(nm1_sub, 'NM109', 'member_id', 'MemberID', 'NM1_09')}
+                onCommit={(v) => handleCommit(nm1_sub, ['NM109', 'member_id', 'MemberID', 'NM1_09'], v)}
+                errors={getErrors(errors, '2010B', 'NM109')}
+              />
+              <FormField
+                id="sub-last-name" label="Last Name" hint="Smith"
+                value={getVal(nm1_sub, 'NM103', 'last_name', 'NM1_03')}
+                onCommit={(v) => handleCommit(nm1_sub, ['NM103', 'last_name', 'NM1_03'], v)}
+                errors={getErrors(errors, '2010B', 'NM103')}
+              />
+              <FormField
+                id="sub-first-name" label="First Name" hint="Jane"
+                value={getVal(nm1_sub, 'NM104', 'first_name', 'NM1_04')}
+                onCommit={(v) => handleCommit(nm1_sub, ['NM104', 'first_name', 'NM1_04'], v)}
+                errors={getErrors(errors, '2010B', 'NM104')}
+              />
+              <FormField
+                id="sub-dob" label="Date of Birth" mono hint="YYYYMMDD"
+                value={getVal(dmg_sub, 'DMG02', 'dob', 'birth_date')}
+                onCommit={(v) => handleCommit(dmg_sub, ['DMG02', 'dob', 'birth_date'], v)}
+                errors={getErrors(errors, '2010B', 'DMG02', 'DOB')}
+              />
+              <FormField
+                id="sub-gender" label="Gender Code" hint="M / F / U"
+                value={getVal(dmg_sub, 'DMG03', 'gender', 'sex')}
+                onCommit={(v) => handleCommit(dmg_sub, ['DMG03', 'gender', 'sex'], v)}
+                errors={getErrors(errors, '2010B', 'DMG03')}
+              />
+              <FormField
+                id="sub-plan" label="Insurance Plan Name" hint="BlueCross PPO"
+                value={getVal(l2010BA, 'plan_name', 'insurance_plan', 'INS03')}
+                onCommit={(v) => handleCommit(l2010BA, ['plan_name', 'insurance_plan', 'INS03'], v)}
+                errors={getErrors(errors, '2010B', 'INS03', 'plan_name')}
+              />
+            </FieldGrid>
+          </SectionCard>
 
           {/* ── Section 4: Claim Information ── */}
-          <motion.div
-            key="claim"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.24 }}
-          >
-            <SectionCard
-              sectionRef={sectionRefs.current.claim as React.RefObject<HTMLDivElement | null>}
-              isHighlighted={highlightedSection === 'claim'}
-            >
-              <SectionHeader title="Claim Information" icon="📋" rotate={0.4} />
-              <FieldGrid cols={2}>
-                <FormField
-                  id="clm-id"
-                  label="Patient Control Number"
-                  value={getStr(clmSeg, 'CLM01', 'claim_id', 'control_number', 'CLM_01')}
-                  onChange={(v) => handleFieldChange(['loop_2300', 'CLM', 'CLM01'], v)}
-                  errors={getErrors(errors, 'CLM01')}
-                  isActive={activeFieldPath?.includes('2300')}
-                  mono
-                  hint="CLM-2024-001"
-                />
-                <FormField
-                  id="clm-amount"
-                  label="Total Charge Amount ($)"
-                  value={getStr(clmSeg, 'CLM02', 'total_charge', 'amount', 'CLM_02')}
-                  onChange={(v) => handleFieldChange(['loop_2300', 'CLM', 'CLM02'], v)}
-                  errors={getErrors(errors, 'CLM02', 'AmountMismatch')}
-                  mono
-                  hint="1500.00"
-                />
-                <FormField
-                  id="clm-service-date"
-                  label="Service Date"
-                  value={getStr(dtpSeg, 'DTP03', 'service_date', 'date')}
-                  onChange={(v) => handleFieldChange(['loop_2300', 'DTP', 'DTP03'], v)}
-                  errors={getErrors(errors, 'DTP03')}
-                  mono
-                  hint="YYYYMMDD"
-                />
-                <FormField
-                  id="clm-facility"
-                  label="Facility Code"
-                  value={getStr(clmSeg, 'CLM05_1', 'facility_code', 'place_of_service')}
-                  onChange={(v) => handleFieldChange(['loop_2300', 'CLM', 'CLM05_1'], v)}
-                  errors={getErrors(errors, 'CLM05')}
-                  mono
-                  hint="11 (Office)"
-                />
-              </FieldGrid>
+          <SectionCard sectionRef={sectionRefs.current.claim as React.RefObject<HTMLDivElement>} isHighlighted={highlightedSection === 'claim'}>
+            <SectionHeader title="Claim Information" icon="📋" rotate={0.4} />
+            <FieldGrid cols={2}>
+              <FormField
+                id="clm-id" label="Patient Control Number" mono hint="CLM-2024-001"
+                value={getVal(clmSeg, 'CLM01', 'claim_id', 'control_number', 'CLM_01')}
+                onCommit={(v) => handleCommit(clmSeg, ['CLM01', 'claim_id', 'control_number', 'CLM_01'], v)}
+                errors={getErrors(errors, '2300', 'CLM01')}
+              />
+              <FormField
+                id="clm-amount" label="Total Charge Amount ($)" mono hint="1500.00"
+                value={getVal(clmSeg, 'CLM02', 'total_charge', 'amount', 'CLM_02')}
+                onCommit={(v) => handleCommit(clmSeg, ['CLM02', 'total_charge', 'amount', 'CLM_02'], v)}
+                errors={getErrors(errors, '2300', 'CLM02', 'AmountMismatch')}
+              />
+              <FormField
+                id="clm-service-date" label="Service Date" mono hint="YYYYMMDD"
+                value={getVal(dtpSeg, 'DTP03', 'service_date', 'date')}
+                onCommit={(v) => handleCommit(dtpSeg, ['DTP03', 'service_date', 'date'], v)}
+                errors={getErrors(errors, '2300', 'DTP03')}
+              />
+              <FormField
+                id="clm-facility" label="Facility Code" mono hint="11 (Office)"
+                value={getVal(clmSeg, 'CLM05_1', 'facility_code', 'place_of_service')}
+                onCommit={(v) => handleCommit(clmSeg, ['CLM05_1', 'facility_code', 'place_of_service'], v)}
+                errors={getErrors(errors, '2300', 'CLM05')}
+              />
+            </FieldGrid>
 
-              {/* ICD-10 Diagnosis Codes */}
-              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1.5px dashed rgba(26,26,46,0.12)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                  <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 12, color: 'rgba(26,26,46,0.6)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Diagnosis Codes (ICD-10)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => askAI('Please validate the ICD-10-CM diagnosis codes in Loop 2300 (HI segment). Check for correct format (letter followed by alphanumerics, with a decimal in the right place) and flag any unknown or discontinued codes.')}
-                    style={{
-                      padding: '2px 10px',
-                      fontSize: 10,
-                      background: '#FFE66D',
-                      border: '1.5px solid #1A1A2E',
-                      borderRadius: 6,
-                      boxShadow: '2px 2px 0px #1A1A2E',
-                      cursor: 'pointer',
-                      fontFamily: 'Nunito, sans-serif',
-                      fontWeight: 800,
-                      color: '#1A1A2E',
-                      transform: 'rotate(-0.5deg)',
-                      transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'rotate(0.5deg) translateY(-1px)'
-                      e.currentTarget.style.boxShadow = '3px 3px 0px #1A1A2E'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'rotate(-0.5deg)'
-                      e.currentTarget.style.boxShadow = '2px 2px 0px #1A1A2E'
-                    }}
-                  >
-                    ✦ Ask AI to Fix
-                  </button>
-                </div>
-                <FieldGrid cols={3}>
-                  {['HI01_2', 'HI02_2', 'HI03_2', 'HI04_2', 'HI05_2', 'HI06_2'].map((key, i) => {
-                    const codeVal = getStr(hiSeg, key, `code_${i + 1}`, i === 0 ? 'primary_dx' : `dx_${i + 1}`)
-                    return (
-                      <FormField
-                        key={key}
-                        id={`dx-code-${i + 1}`}
-                        label={`Dx Code ${i + 1}${i === 0 ? ' (Primary)' : ''}`}
-                        value={codeVal}
-                        onChange={(v) => handleFieldChange(['loop_2300', 'HI', key], v)}
-                        errors={getErrors(errors, key, 'HI0', 'ICD')}
-                        isActive={activeFieldPath?.includes('2300')}
-                        mono
-                        hint="J18.9"
-                      />
-                    )
-                  })}
-                </FieldGrid>
+            {/* ICD-10 Diagnosis Codes */}
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1.5px dashed rgba(26,26,46,0.12)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 12, color: 'rgba(26,26,46,0.6)', textTransform: 'uppercase' }}>Diagnosis Codes (ICD-10)</span>
               </div>
-              <div style={{ position: 'absolute', bottom: 10, right: 14 }} className="corner-tag">
-                Loop 2300
-              </div>
-            </SectionCard>
-          </motion.div>
+              <FieldGrid cols={3}>
+                {['HI01_2', 'HI02_2', 'HI03_2', 'HI04_2', 'HI05_2', 'HI06_2'].map((key, i) => {
+                  return (
+                    <FormField
+                      key={key} id={`dx-code-${i + 1}`} label={`Dx Code ${i + 1}${i === 0 ? ' (Primary)' : ''}`} mono hint="J18.9"
+                      value={getVal(hiSeg, key, `code_${i + 1}`, i === 0 ? 'primary_dx' : `dx_${i + 1}`)}
+                      onCommit={(v) => handleCommit(hiSeg, [key, `code_${i + 1}`, i === 0 ? 'primary_dx' : `dx_${i + 1}`], v)}
+                      errors={getErrors(errors, '2300', key, 'HI0', 'ICD')}
+                    />
+                  )
+                })}
+              </FieldGrid>
+            </div>
+          </SectionCard>
 
           {/* ── Section 5: Service Lines ── */}
-          <motion.div
-            key="service"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.32 }}
-          >
-            <div
-              ref={sectionRefs.current.service as React.RefObject<HTMLDivElement>}
-              style={{
-                background: '#FFFFFF',
-                border: highlightedSection === 'service' ? '2px solid #4ECDC4' : '2px solid #1A1A2E',
-                borderRadius: 12,
-                boxShadow: highlightedSection === 'service' ? '4px 4px 0px #4ECDC4' : '4px 4px 0px #1A1A2E',
-                padding: '24px 24px 28px',
-                position: 'relative',
-                transition: 'border-color 0.3s, box-shadow 0.3s',
-              }}
-            >
-              <SectionHeader title="Service Line Items" icon="💊" rotate={-0.4} />
-
-              {serviceLines.length === 0 ? (
-                <div
-                  style={{
-                    padding: '24px',
-                    border: '1.5px dashed rgba(26,26,46,0.2)',
-                    borderRadius: 8,
-                    textAlign: 'center',
-                    fontFamily: 'Nunito, sans-serif',
-                    fontSize: 13,
-                    color: 'rgba(26,26,46,0.4)',
-                    fontStyle: 'italic',
-                  }}
-                >
-                  No service lines found in Loop 2400.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {serviceLines.map((line, idx) => {
-                    const sv1 = getLoop(line, 'SV1', 'sv1') ?? line
-                    const dtpLine = getLoop(line, 'DTP', 'dtp')
-                    const isLineActive = activeFieldPath?.includes(`2400[${idx}]`) || activeFieldPath?.includes('2400')
-
-                    return (
-                      <div
-                        key={idx}
-                        style={{
-                          border: `1.5px solid ${isLineActive ? '#4ECDC4' : 'rgba(26,26,46,0.1)'}`,
-                          borderRadius: 10,
-                          padding: '16px 18px',
-                          background: idx % 2 === 0 ? '#FDFAF4' : '#FFFFFF',
-                          position: 'relative',
-                          transition: 'border-color 0.2s',
-                        }}
-                      >
-                        {/* Line number badge */}
-                        <span
-                          style={{
-                            position: 'absolute',
-                            top: -10,
-                            left: 14,
-                            background: '#1A1A2E',
-                            color: '#FDFAF4',
-                            fontFamily: 'JetBrains Mono, monospace',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            padding: '1px 8px',
-                            borderRadius: 4,
-                            boxShadow: '1px 1px 0px rgba(26,26,46,0.3)',
-                          }}
-                        >
-                          Line {idx + 1}
-                        </span>
-
-                        <FieldGrid cols={3}>
-                          <FormField
-                            id={`svc-${idx}-proc`}
-                            label="Procedure Code"
-                            value={getStr(sv1, 'SV101', 'procedure_code', 'SV1_01')}
-                            onChange={(v) => handleFieldChange([`loop_2400[${idx}]`, 'SV1', 'SV101'], v)}
-                            errors={getErrors(errors, 'SV101')}
-                            isActive={isLineActive}
-                            mono
-                            hint="HC:99213"
-                          />
-                          <FormField
-                            id={`svc-${idx}-amount`}
-                            label="Charge ($)"
-                            value={getStr(sv1, 'SV102', 'charge', 'amount', 'SV1_02')}
-                            onChange={(v) => handleFieldChange([`loop_2400[${idx}]`, 'SV1', 'SV102'], v)}
-                            errors={getErrors(errors, 'SV102')}
-                            mono
-                            hint="150.00"
-                          />
-                          <FormField
-                            id={`svc-${idx}-units`}
-                            label="Units"
-                            value={getStr(sv1, 'SV104', 'units', 'SV1_04')}
-                            onChange={(v) => handleFieldChange([`loop_2400[${idx}]`, 'SV1', 'SV104'], v)}
-                            errors={getErrors(errors, 'SV104')}
-                            mono
-                            hint="1"
-                          />
-                          <FormField
-                            id={`svc-${idx}-modifier`}
-                            label="Modifier"
-                            value={getStr(sv1, 'SV101_2', 'modifier', 'SV1_01_2')}
-                            onChange={(v) => handleFieldChange([`loop_2400[${idx}]`, 'SV1', 'SV101_2'], v)}
-                            errors={getErrors(errors, 'modifier')}
-                            mono
-                            hint="25"
-                          />
-                          <FormField
-                            id={`svc-${idx}-date`}
-                            label="Service Date"
-                            value={getStr(dtpLine, 'DTP03', 'service_date', 'date')}
-                            onChange={(v) => handleFieldChange([`loop_2400[${idx}]`, 'DTP', 'DTP03'], v)}
-                            errors={getErrors(errors, 'DTP03')}
-                            mono
-                            hint="YYYYMMDD"
-                          />
-                          <FormField
-                            id={`svc-${idx}-diagptr`}
-                            label="Diagnosis Pointer"
-                            value={getStr(sv1, 'SV107', 'diagnosis_pointer', 'SV1_07')}
-                            onChange={(v) => handleFieldChange([`loop_2400[${idx}]`, 'SV1', 'SV107'], v)}
-                            errors={getErrors(errors, 'SV107')}
-                            mono
-                            hint="1"
-                          />
-                        </FieldGrid>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              <div style={{ position: 'absolute', bottom: 10, right: 14 }} className="corner-tag">
-                Loop 2400
+          <div ref={sectionRefs.current.service as React.RefObject<HTMLDivElement>} style={{ background: '#FFFFFF', border: highlightedSection === 'service' ? '2px solid #4ECDC4' : '2px solid #1A1A2E', borderRadius: 12, padding: '24px 24px 28px' }}>
+            <SectionHeader title="Service Line Items" icon="💊" rotate={-0.4} />
+            {serviceLines.length === 0 ? (
+              <div style={{ padding: '24px', border: '1.5px dashed rgba(26,26,46,0.2)', borderRadius: 8, textAlign: 'center', fontStyle: 'italic' }}>
+                No service lines found in Loop 2400.
               </div>
-            </div>
-          </motion.div>
-
-        </div>
-
-        {/* ── Sticky Commit Bar ─────────────────────────────────────────── */}
-        <div
-          style={{
-            position: 'sticky',
-            bottom: -50,
-            zIndex: 20,
-            padding: '14px 28px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-          }}
-        >
-          <button
-            id="commit-changes-btn"
-            onClick={handleCommit}
-            disabled={!rawFile || isSubmitting}
-            title={!rawFile ? 'No raw file available — commit is disabled for sample or direct loads' : 'Re-validate and save changes'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 22px',
-              background: (!rawFile || isSubmitting) ? 'rgba(26,26,46,0.08)' : submitSuccess ? '#4ECDC4' : '#1A1A2E',
-              color: (!rawFile || isSubmitting) ? 'rgba(26,26,46,0.35)' : '#FDFAF4',
-              border: '2px solid rgba(26,26,46,0.2)',
-              borderRadius: '255px 15px 225px 15px / 15px 225px 15px 255px',
-              boxShadow: (!rawFile || isSubmitting) ? 'none' : submitSuccess ? '3px 3px 0px rgba(78,205,196,0.4)' : '3px 3px 0px #1A1A2E',
-              cursor: (!rawFile || isSubmitting) ? 'not-allowed' : 'pointer',
-              fontFamily: 'Nunito, sans-serif',
-              fontWeight: 800,
-              fontSize: 13,
-              transition: 'all 0.2s ease',
-              opacity: (!rawFile || isSubmitting) ? 0.6 : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (rawFile && !isSubmitting) {
-                e.currentTarget.style.transform = 'translateY(-1px)'
-                e.currentTarget.style.boxShadow = '5px 5px 0px #1A1A2E'
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = (!rawFile || isSubmitting) ? 'none' : '3px 3px 0px #1A1A2E'
-            }}
-          >
-            {isSubmitting ? (
-              <>
-                <div className="doodle-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                Saving…
-              </>
-            ) : submitSuccess ? (
-              <>
-                ✅ Saved!
-              </>
             ) : (
-              <>
-                🔄 Commit Changes
-              </>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {serviceLines.map((line, idx) => {
+                  const sv1 = findSegment(line, 'SV1') ?? line
+                  const dtpLine = findSegment(line, 'DTP')
+
+                  return (
+                    <div key={idx} style={{ border: `1.5px solid rgba(26,26,46,0.1)`, borderRadius: 10, padding: '16px 18px', background: idx % 2 === 0 ? '#FDFAF4' : '#FFFFFF', position: 'relative' }}>
+                      <FieldGrid cols={3}>
+                        <FormField
+                          id={`svc-${idx}-proc`} label="Procedure Code" mono hint="HC:99213"
+                          value={getVal(sv1, 'SV101', 'procedure_code', 'SV1_01')}
+                          onCommit={(v) => handleCommit(sv1, ['SV101', 'procedure_code', 'SV1_01'], v)}
+                          errors={getErrors(errors, '2400', 'SV101')}
+                        />
+                        <FormField
+                          id={`svc-${idx}-amount`} label="Charge ($)" mono hint="150.00"
+                          value={getVal(sv1, 'SV102', 'charge', 'amount', 'SV1_02')}
+                          onCommit={(v) => handleCommit(sv1, ['SV102', 'charge', 'amount', 'SV1_02'], v)}
+                          errors={getErrors(errors, '2400', 'SV102')}
+                        />
+                        <FormField
+                          id={`svc-${idx}-units`} label="Units" mono hint="1"
+                          value={getVal(sv1, 'SV104', 'units', 'SV1_04')}
+                          onCommit={(v) => handleCommit(sv1, ['SV104', 'units', 'SV1_04'], v)}
+                          errors={getErrors(errors, '2400', 'SV104')}
+                        />
+                        <FormField
+                          id={`svc-${idx}-modifier`} label="Modifier" mono hint="25"
+                          value={getVal(sv1, 'SV101_2', 'modifier', 'SV1_01_2')}
+                          onCommit={(v) => handleCommit(sv1, ['SV101_2', 'modifier', 'SV1_01_2'], v)}
+                          errors={getErrors(errors, '2400', 'modifier')}
+                        />
+                        <FormField
+                          id={`svc-${idx}-date`} label="Service Date" mono hint="YYYYMMDD"
+                          value={getVal(dtpLine, 'DTP03', 'service_date', 'date')}
+                          onCommit={(v) => handleCommit(dtpLine, ['DTP03', 'service_date', 'date'], v)}
+                          errors={getErrors(errors, '2400', 'DTP03')}
+                        />
+                        <FormField
+                          id={`svc-${idx}-diagptr`} label="Diagnosis Pointer" mono hint="1"
+                          value={getVal(sv1, 'SV107', 'diagnosis_pointer', 'SV1_07')}
+                          onCommit={(v) => handleCommit(sv1, ['SV107', 'diagnosis_pointer', 'SV1_07'], v)}
+                          errors={getErrors(errors, '2400', 'SV107')}
+                        />
+                      </FieldGrid>
+                    </div>
+                  )
+                })}
+              </div>
             )}
-          </button>
-
-          {!rawFile && (
-            <span style={{
-              fontFamily: 'Nunito, sans-serif',
-              fontSize: 11,
-              color: 'rgba(26,26,46,0.4)',
-              fontStyle: 'italic',
-            }}>
-              Commit is disabled — sample file or no raw file in session
-            </span>
-          )}
-
-          {submitSuccess && (
-            <motion.span
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0 }}
-              style={{
-                fontFamily: 'Nunito, sans-serif',
-                fontSize: 12,
-                color: '#4ECDC4',
-                fontWeight: 700,
-              }}
-            >
-              Re-validation complete ✓
-            </motion.span>
-          )}
+          </div>
         </div>
       </div>
     </>
