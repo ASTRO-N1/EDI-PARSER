@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useNavigate } from 'react-router-dom'
 import { UploadCloud } from 'lucide-react'
@@ -7,81 +7,338 @@ import useAppStore from '../../store/useAppStore'
 import CenterTabBar from './CenterTabBar'
 import FormEditorView from './FormEditorView'
 
-// ── Skeleton placeholder helpers ─────────────────────────────────────────────
-function SkeletonLine({ width = '100%', height = 14 }: { width?: string | number; height?: number }) {
-  return (
-    <div style={{
-      width,
-      height,
-      background: 'rgba(26,26,46,0.07)',
-      borderRadius: 6,
-      flexShrink: 0,
-    }} />
-  )
-}
+// // ── Skeleton placeholder helpers ─────────────────────────────────────────────
+// function SkeletonLine({ width = '100%', height = 14 }: { width?: string | number; height?: number }) {
+//   return (
+//     <div style={{
+//       width,
+//       height,
+//       background: 'rgba(26,26,46,0.07)',
+//       borderRadius: 6,
+//       flexShrink: 0,
+//     }} />
+//   )
+// }
 
 // ── Tab content placeholders ─────────────────────────────────────────────────
 // FormViewContent replaced by <FormEditorView /> which reads live parseResult
 
 function RawEDIContent() {
-  const lines = [
-    'ISA*00*          *00*          *ZZ*SENDER001      *ZZ*RECEIVER001    *230115*1200*^*00501*000000001*0*P*:~',
-    'GS*HC*SENDER001*RECEIVER001*20230115*1200*1*X*005010X222A1~',
-    'ST*837*0001*005010X222A1~',
-    'BPR*...',
-    'NM1*41*2*ACME BILLING*****46*123456789~',
-    'CLM*CLM001*1500.00***11:B:1*Y*A*Y*I~',
-    'HI*ABK:J18.9~',
-    'SV1*HC:99213*150.00*UN*1***1~',
-    'SE*...',
-  ]
-  return (
-    <div style={{ padding: 16, height: '100%', overflow: 'auto' }} className="custom-scrollbar">
-      <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: 12, color: 'rgba(26,26,46,0.4)', fontStyle: 'italic', marginBottom: 12 }}>
-        Raw EDI — Scroll the raw X12 text. Upload a file to see real segments.
-      </p>
-      <div style={{
-        background: '#1A1A2E',
-        border: '2.5px solid #1A1A2E',
-        borderRadius: 10,
-        padding: '16px 20px',
-        boxShadow: '4px 4px 0px rgba(26,26,46,0.3)',
-      }}>
-        {lines.map((line, i) => (
-          <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 4 }}>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'rgba(78,205,196,0.4)', minWidth: 20, userSelect: 'none' }}>{i + 1}</span>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#4ECDC4', wordBreak: 'break-all', lineHeight: 1.6 }}>{line}</span>
-          </div>
-        ))}
+  // 1. ALL hooks must be called at the very top level
+  const ediFile = useAppStore((s) => s.ediFile)
+  const setEdiFile = useAppStore((s) => s.setEdiFile)
+  const setParseResult = useAppStore((s) => s.setParseResult)
+  const setTransactionType = useAppStore((s) => s.setTransactionType)
+  const setError = useAppStore((s) => s.setError)
+  const isSubmitting = useAppStore((s) => s.isSubmitting)
+  const setIsSubmitting = useAppStore((s) => s.setIsSubmitting)
+  const setActiveTabId = useAppStore((s) => s.setActiveTabId)
+  const session = useAppStore((s) => s.session)
+
+  const [rawText, setRawText] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Read the text from the actual uploaded File object
+  useEffect(() => {
+    if (ediFile?.file && typeof ediFile.file.text === 'function') {
+      ediFile.file.text().then(text => {
+        setRawText(text)
+        setIsLoading(false)
+      }).catch(err => {
+        console.error("Error reading file", err)
+        setRawText('Error reading file content.')
+        setIsLoading(false)
+      })
+    } else {
+      setRawText('No raw EDI content available. Please upload a file.')
+      setIsLoading(false)
+    }
+  }, [ediFile])
+
+  // Repackage the text, send it to the parser API, and update the store in-place
+  const handleSave = async (e: React.MouseEvent) => {
+    e.preventDefault() // Prevents any accidental form-submission reloads
+
+    if (!rawText.trim() || isSubmitting) return
+
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const fileName = ediFile?.fileName || 'edited.edi'
+      const newFile = new File([rawText], fileName, { type: 'text/plain' })
+
+      const formData = new FormData()
+      formData.append('file', newFile)
+
+      // Use the frontend bypass header defined in your auth.py
+      const headers: Record<string, string> = {
+        'X-Internal-Bypass': 'frontend-ui-secret'
+      }
+
+      // We can also pass the session token just in case other middlewares need it
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${API_URL}/api/v1/parse`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.detail || errData.message || 'Failed to parse the modified EDI file.')
+      }
+
+      const data = await response.json()
+
+      // Update the stores IN PLACE. No navigation or redirection happens here.
+      setEdiFile(newFile)
+      setParseResult(data)
+      setTransactionType(data.metadata?.transaction_type || null)
+
+      // Automatically switch back to the form view to see the fresh validation and changes
+      setActiveTabId('form')
+
+    } catch (err: any) {
+      console.error("Parse Error:", err)
+      setError(err.message || 'An error occurred during parsing.')
+      alert(err.message || 'An error occurred during parsing.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // 2. Early returns happen AFTER all hooks are declared
+  if (isLoading) {
+    return (
+      <div style={{ padding: 16, fontFamily: 'Nunito, sans-serif', color: 'rgba(26,26,46,0.6)' }}>
+        Loading raw EDI content...
       </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: 12, color: 'rgba(26,26,46,0.4)', fontStyle: 'italic', margin: 0 }}>
+          Raw EDI — Edit the raw X12 text and submit to re-validate.
+        </p>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSubmitting}
+          style={{
+            background: isSubmitting ? 'rgba(26,26,46,0.1)' : '#4ECDC4',
+            color: isSubmitting ? 'rgba(26,26,46,0.4)' : '#1A1A2E',
+            fontFamily: 'Nunito, sans-serif',
+            fontWeight: 800,
+            fontSize: 13,
+            border: isSubmitting ? '2px solid rgba(26,26,46,0.1)' : '2px solid #1A1A2E',
+            borderRadius: 8,
+            padding: '6px 12px',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            boxShadow: isSubmitting ? 'none' : '2px 2px 0px rgba(26,26,46,0.3)',
+            transition: 'all 0.1s ease',
+          }}
+          onMouseDown={(e) => {
+            if (isSubmitting) return;
+            e.currentTarget.style.boxShadow = '0px 0px 0px rgba(26,26,46,0.3)';
+            e.currentTarget.style.transform = 'translate(2px, 2px)';
+          }}
+          onMouseUp={(e) => {
+            if (isSubmitting) return;
+            e.currentTarget.style.boxShadow = '2px 2px 0px rgba(26,26,46,0.3)';
+            e.currentTarget.style.transform = 'translate(0px, 0px)';
+          }}
+        >
+          {isSubmitting ? 'Reparsing...' : 'Submit & Reparse'}
+        </button>
+      </div>
+
+      <textarea
+        value={rawText}
+        onChange={(e) => setRawText(e.target.value)}
+        spellCheck={false}
+        className="custom-scrollbar"
+        style={{
+          flex: 1,
+          background: '#1A1A2E',
+          color: '#4ECDC4',
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 12,
+          lineHeight: 1.6,
+          padding: '16px 20px',
+          border: '2.5px solid #1A1A2E',
+          borderRadius: 10,
+          boxShadow: '4px 4px 0px rgba(26,26,46,0.3)',
+          resize: 'none',
+          outline: 'none',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      />
     </div>
   )
 }
 
 function SummaryContent() {
+  const parseResult = useAppStore((s) => s.parseResult)
+
+  if (!parseResult) {
+    return (
+      <div style={{ padding: 24 }}>
+        <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: 12, color: 'rgba(26,26,46,0.4)' }}>
+          No data available. Upload an EDI file.
+        </p>
+      </div>
+    )
+  }
+
+  // Handle potentially nested data structure from the backend
+  const data = (parseResult as any).data || parseResult
+  const metadata = data.metadata || {}
+  const loops = data.loops || {}
+  const txnType = metadata.transaction_type
+
+  // ── 835 Remittance Summary ─────────────────────────────────────────────────
+  if (txnType === '835') {
+    const clpLoops = loops['835_2100'] || []
+    const headerLoop = loops['835_HEADER']?.[0] || {}
+    const trn = headerLoop['TRN'] || data.envelope?.TRN
+    const checkNumber = trn?.TRN02 || 'N/A'
+
+    return (
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <h3 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, margin: 0, color: '#1A1A2E' }}>
+          835 Remittance Summary
+        </h3>
+        <div style={{ overflowX: 'auto', background: '#FFFFFF', border: '2px solid rgba(26,26,46,0.12)', borderRadius: 10, boxShadow: '3px 3px 0px rgba(26,26,46,0.06)' }} className="custom-scrollbar">
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Nunito, sans-serif', fontSize: 13, textAlign: 'left' }}>
+            <thead style={{ background: '#1A1A2E', color: '#4ECDC4' }}>
+              <tr>
+                <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Claim ID</th>
+                <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Billed</th>
+                <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Paid</th>
+                <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Pt Resp</th>
+                <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Check/EFT</th>
+                <th style={{ padding: '12px 16px' }}>Adj Reasons</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clpLoops.length === 0 && (
+                <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center' }}>No Claims Found</td></tr>
+              )}
+              {clpLoops.map((loop: any, i: number) => {
+                const clp = loop['CLP'] || {}
+                const cas = loop['CAS']
+                const casList = Array.isArray(cas) ? cas : (cas ? [cas] : [])
+                const adjs = casList.map((c: any) => `${c.CAS01 || ''}:${c.CAS02 || ''}`).filter(Boolean).join(', ') || 'None'
+
+                return (
+                  <tr key={i} style={{ borderTop: '1px solid rgba(26,26,46,0.08)' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{clp.CLP01 || 'Unknown'}</td>
+                    <td style={{ padding: '12px 16px' }}>${parseFloat(clp.CLP03 || '0').toFixed(2)}</td>
+                    <td style={{ padding: '12px 16px', color: '#4ECDC4', fontWeight: 800 }}>${parseFloat(clp.CLP04 || '0').toFixed(2)}</td>
+                    <td style={{ padding: '12px 16px' }}>${parseFloat(clp.CLP05 || '0').toFixed(2)}</td>
+                    <td style={{ padding: '12px 16px' }}>{checkNumber}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 11, color: 'rgba(26,26,46,0.6)' }}>{adjs}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  // ── 834 Member Enrollment Summary ──────────────────────────────────────────
+  if (txnType === '834') {
+    const memberLoops = loops['834_2000'] || []
+    const nameLoops = loops['834_2100A'] || []
+
+    return (
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <h3 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, margin: 0, color: '#1A1A2E' }}>
+          834 Member Enrollment Roster
+        </h3>
+        <div style={{ overflowX: 'auto', background: '#FFFFFF', border: '2px solid rgba(26,26,46,0.12)', borderRadius: 10, boxShadow: '3px 3px 0px rgba(26,26,46,0.06)' }} className="custom-scrollbar">
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Nunito, sans-serif', fontSize: 13, textAlign: 'left' }}>
+            <thead style={{ background: '#1A1A2E', color: '#FFE66D' }}>
+              <tr>
+                <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Member ID</th>
+                <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Name</th>
+                <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Rel</th>
+                <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Status / Maintenance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {memberLoops.length === 0 && (
+                <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center' }}>No Members Found</td></tr>
+              )}
+              {memberLoops.map((loop: any, i: number) => {
+                const ins = loop['INS'] || {}
+                const ref = loop['REF'] || {}
+                const nm1 = nameLoops[i]?.['NM1'] || {}
+
+                const memberId = ref.REF02 || 'N/A'
+                const name = `${nm1.NM104 || ''} ${nm1.NM103 || ''}`.trim() || 'Unknown'
+                const rel = ins.INS02 === '18' ? 'Self' : (ins.INS02 || 'Dep')
+                const maintCode = ins.INS03 || '030'
+
+                // Color Code based on the standard HIPAA maintenance types
+                let maintColor = '#1A1A2E'
+                let bg = '#EEEEEE'
+                let label = maintCode
+                if (maintCode === '021') { bg = 'rgba(78,205,196,0.2)'; maintColor = '#2B9B93'; label = '021 - Addition' }
+                if (maintCode === '024') { bg = 'rgba(255,107,107,0.2)'; maintColor = '#C92A2A'; label = '024 - Termination' }
+                if (maintCode === '030') { bg = 'rgba(255,230,109,0.3)'; maintColor = '#B89B00'; label = '030 - Audit/Active' }
+                if (maintCode === '001') { bg = '#E0F7FA'; maintColor = '#006064'; label = '001 - Change' }
+
+                return (
+                  <tr key={i} style={{ borderTop: '1px solid rgba(26,26,46,0.08)' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>{memberId}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>{name}</td>
+                    <td style={{ padding: '12px 16px' }}>{rel}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ background: bg, color: maintColor, padding: '4px 8px', borderRadius: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase' }}>
+                        {label}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Generic / 837 Summary Fallback ──────────────────────────────────────────
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: 12, color: 'rgba(26,26,46,0.4)', fontStyle: 'italic' }}>
-        Summary — High-level file overview. Upload a file to see real stats.
+        File Overview Summary
       </p>
       {[
-        { label: 'File Type', value: '837P — Professional Claim' },
-        { label: 'Transaction Sets', value: '1' },
-        { label: 'Total Claim Amount', value: '$1,500.00' },
-        { label: 'Validation Status', value: '2 warnings, 1 error' },
+        { label: 'Transaction Type', value: txnType || 'Unknown' },
+        { label: 'Implementation Ref', value: metadata.implementation_reference || 'N/A' },
+        { label: 'Sender ID', value: metadata.sender_id || 'N/A' },
+        { label: 'Receiver ID', value: metadata.receiver_id || 'N/A' },
       ].map((row) => (
         <div key={row.label} style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          background: '#FFFFFF',
-          border: '2px solid rgba(26,26,46,0.12)',
-          borderRadius: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px', background: '#FFFFFF',
+          border: '2px solid rgba(26,26,46,0.12)', borderRadius: 10,
           boxShadow: '3px 3px 0px rgba(26,26,46,0.06)',
         }}>
           <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 13, color: 'rgba(26,26,46,0.55)' }}>{row.label}</span>
-          <SkeletonLine width={120} height={12} />
+          <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 14, color: '#1A1A2E' }}>{row.value}</span>
         </div>
       ))}
     </div>
